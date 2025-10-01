@@ -1,0 +1,90 @@
+@startuml Task4.3-Component-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Task 4.3: Буферизация и Keep-Alive - Диаграмма компонентов
+
+Container_Boundary(buffer_keepalive, "Менеджер буферизации и Keep-Alive") {
+    
+    Component(buffer_manager, "BufferKeepAliveManager", "Go struct", "Главный менеджер оптимизации буферизации и keep-alive")
+    
+    Component(adaptive_buffer, "AdaptiveBufferSizer", "Go struct", "Адаптивная настройка размеров буферов на основе BDP")
+    
+    Component(bandwidth_monitor, "BandwidthMonitor", "Go struct", "Мониторинг пропускной способности для адаптации буферов")
+    
+    Component(keepalive_manager, "KeepAliveManager", "Go struct", "Интеллектуальное управление keep-alive соединениями")
+    
+    Component(slow_detector, "SlowConnectionDetector", "Go struct", "Обнаружение и обход медленных соединений")
+    
+    Component(connection_buffer, "ConnectionBuffer", "Go struct", "Управление буферами для конкретных соединений")
+    
+    Component(performance_bench, "PerformanceBenchmarker", "Go struct", "Бенчмарки для измерения сетевой производительности")
+}
+
+Container_Ext(libp2p_network, "libp2p Network", "Сетевой слой")
+Container_Ext(quality_monitor, "Quality Monitor", "Монитор качества")
+Container_Ext(prometheus, "Prometheus", "Система метрик")
+
+' Основные взаимодействия
+Rel(buffer_manager, adaptive_buffer, "Запускает адаптацию буферов", "AdaptBufferSize()")
+Rel(buffer_manager, bandwidth_monitor, "Получает данные пропускной способности", "GetPeerBandwidth()")
+Rel(buffer_manager, keepalive_manager, "Управляет keep-alive", "EnableKeepAlive(), RecordActivity()")
+Rel(buffer_manager, slow_detector, "Обнаруживает медленные соединения", "RecordLatency(), IsSlowConnection()")
+
+Rel(adaptive_buffer, connection_buffer, "Настраивает размеры буферов", "SetBufferSize()")
+Rel(adaptive_buffer, bandwidth_monitor, "Получает метрики BDP", "GetBandwidthDelayProduct()")
+
+Rel(keepalive_manager, connection_buffer, "Управляет состоянием keep-alive", "SetKeepAliveState()")
+Rel(slow_detector, connection_buffer, "Устанавливает обходные маршруты", "SetBypassRoutes()")
+
+Rel(bandwidth_monitor, libp2p_network, "Отслеживает передачи данных", "RecordTransfer()")
+Rel(keepalive_manager, libp2p_network, "Выполняет keep-alive проверки", "Ping(), CheckConnectedness()")
+Rel(slow_detector, libp2p_network, "Измеряет латентность", "MeasureLatency()")
+
+Rel(connection_buffer, libp2p_network, "Применяет настройки буферов", "SetSocketBuffers()")
+
+Rel(buffer_manager, quality_monitor, "Получает качество соединений", "GetConnectionQuality()")
+Rel(buffer_manager, performance_bench, "Запускает бенчмарки", "RunPerformanceBenchmarks()")
+
+Rel(buffer_manager, prometheus, "Экспортирует метрики", "Prometheus metrics")
+
+note right of adaptive_buffer
+  **Алгоритм BDP:**
+  • bdp = latency × bandwidth
+  • Низкая ПС: сжатие × 0.75
+  • Высокая ПС: рост × 1.5
+  • Лимиты: 4KB - 1MB
+end note
+
+note right of keepalive_manager
+  **Интеллектуальный Keep-Alive:**
+  • Адаптивные интервалы
+  • Оценка важности (0.5-1.0)
+  • Кластерные пиры: интервал/2
+  • Активность → увеличение интервала
+end note
+
+note right of slow_detector
+  **Обнаружение медленных соединений:**
+  • Порог: 500ms латентность
+  • Выборка: 5 измерений
+  • Подтверждение: 3 обнаружения
+  • Автоматический обход
+end note
+
+note right of bandwidth_monitor
+  **Мониторинг пропускной способности:**
+  • Запись передач данных
+  • Расчет текущей/средней/пиковой скорости
+  • Скользящие средние
+  • Глобальные статистики
+end note
+
+note right of performance_bench
+  **Бенчмарки производительности:**
+  • Адаптация буферов: 1M ops/sec
+  • Keep-alive: 100-10K пиров
+  • Обнаружение медленных: 100K ops/sec
+  • Комплексное профилирование
+end note
+
+@enduml

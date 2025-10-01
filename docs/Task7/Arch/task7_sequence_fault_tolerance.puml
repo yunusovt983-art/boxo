@@ -1,0 +1,196 @@
+@startuml Task7_Sequence_FaultTolerance
+!theme plain
+
+title Task 7.3: Последовательность выполнения тестирования отказоустойчивости
+
+actor SRE as sre
+participant "ChaosEngine" as chaos
+participant "ChaosOrchestrator" as orchestrator
+participant "FaultInjector" as injector
+participant "NetworkFailureSimulator" as network_sim
+participant "NodeFailureSimulator" as node_sim
+participant "CircuitBreakerValidator" as cb_validator
+participant "RecoveryTestEngine" as recovery
+participant "BitswapSystem" as bitswap
+participant "IPFSCluster" as cluster
+participant "HealthChecker" as health
+participant "IncidentLogger" as logger
+participant "AlertManager" as alerts
+
+== Инициализация Chaos Engineering ==
+
+sre -> chaos: InitiateChaosExperiment(experiment_config)
+activate chaos
+
+chaos -> orchestrator: SetupChaosEnvironment()
+activate orchestrator
+
+orchestrator -> health: BaselineHealthCheck()
+activate health
+health -> bitswap: CheckSystemHealth()
+activate bitswap
+bitswap -> health: SystemHealthy(all_components_ok)
+deactivate bitswap
+health -> orchestrator: BaselineEstablished()
+deactivate health
+
+== Тестирование сбоев сети ==
+
+orchestrator -> injector: InjectNetworkFailures()
+activate injector
+
+injector -> network_sim: SimulateNetworkPartition(duration=5min)
+activate network_sim
+
+network_sim -> cluster: CreateNetworkPartition(nodes=[1,2], nodes=[3,4,5])
+activate cluster
+
+cluster -> network_sim: PartitionCreated(timestamp, affected_nodes)
+
+network_sim -> orchestrator: NetworkFailureActive(partition_info)
+deactivate network_sim
+
+orchestrator -> health: MonitorSystemDuringFailure()
+health -> bitswap: CheckComponentHealth()
+bitswap -> health: PartialDegradation(affected_components)
+
+orchestrator -> cb_validator: ValidateCircuitBreakerActivation()
+activate cb_validator
+
+cb_validator -> bitswap: CheckCircuitBreakerState()
+bitswap -> cb_validator: CircuitBreakerOpen(component=network_layer)
+
+cb_validator -> orchestrator: CircuitBreakerValidated(state=open, reason=network_failure)
+deactivate cb_validator
+
+== Тестирование восстановления после сбоев сети ==
+
+orchestrator -> recovery: InitiateNetworkRecovery()
+activate recovery
+
+recovery -> cluster: RestoreNetworkConnectivity()
+cluster -> recovery: NetworkRestored(timestamp, recovery_duration=30s)
+deactivate cluster
+
+recovery -> health: MonitorRecoveryProcess()
+health -> bitswap: CheckRecoveryProgress()
+
+loop Recovery monitoring (2 minutes)
+    bitswap -> health: RecoveryStatus(progress_percentage)
+    health -> recovery: RecoveryProgress(progress_percentage)
+    
+    alt Full recovery achieved
+        break
+    end
+end
+
+recovery -> cb_validator: ValidateCircuitBreakerRecovery()
+cb_validator -> bitswap: CheckCircuitBreakerState()
+bitswap -> cb_validator: CircuitBreakerClosed(recovery_time=45s)
+
+recovery -> orchestrator: NetworkRecoveryCompleted(total_time=75s, success=true)
+deactivate recovery
+
+== Тестирование сбоев узлов ==
+
+orchestrator -> injector: InjectNodeFailures()
+
+injector -> node_sim: SimulateNodeCrash(node_id=3)
+activate node_sim
+
+node_sim -> cluster: CrashNode(node_3)
+activate cluster
+cluster -> node_sim: NodeCrashed(node_3, timestamp)
+
+node_sim -> orchestrator: NodeFailureActive(node_3)
+deactivate node_sim
+
+orchestrator -> health: MonitorClusterAfterNodeFailure()
+health -> cluster: CheckClusterHealth()
+cluster -> health: ClusterDegraded(active_nodes=4, failed_nodes=1)
+
+orchestrator -> bitswap: TestGracefulDegradation()
+bitswap -> orchestrator: GracefulDegradationActive(reduced_capacity=80%)
+
+== Тестирование автоматического восстановления ==
+
+orchestrator -> recovery: TestAutoRecovery()
+activate recovery
+
+recovery -> cluster: TriggerNodeRestart(node_3)
+cluster -> recovery: NodeRestartInitiated(node_3)
+
+loop Node recovery monitoring (3 minutes)
+    recovery -> cluster: CheckNodeStatus(node_3)
+    cluster -> recovery: NodeStatus(node_3, status)
+    
+    alt Node fully recovered
+        recovery -> health: ValidateNodeHealth(node_3)
+        health -> recovery: NodeHealthy(node_3)
+        break
+    end
+end
+
+recovery -> orchestrator: AutoRecoveryCompleted(node_3, recovery_time=120s)
+deactivate recovery
+deactivate cluster
+
+== Валидация паттернов устойчивости ==
+
+orchestrator -> cb_validator: ValidateResiliencePatterns()
+activate cb_validator
+
+cb_validator -> bitswap: TestRetryPattern()
+bitswap -> cb_validator: RetryPatternWorking(max_retries=3, backoff=exponential)
+
+cb_validator -> bitswap: TestTimeoutPattern()
+bitswap -> cb_validator: TimeoutPatternWorking(timeout=30s, fallback_active)
+
+cb_validator -> bitswap: TestBulkheadPattern()
+bitswap -> cb_validator: BulkheadPatternWorking(isolation_maintained)
+
+cb_validator -> orchestrator: ResiliencePatternsValidated(all_patterns_working)
+deactivate cb_validator
+
+== Логирование инцидентов и алертинг ==
+
+orchestrator -> logger: LogChaosExperimentResults()
+activate logger
+
+logger -> logger: CreateIncidentReport(experiment_summary)
+logger -> logger: CalculateMTTR(recovery_times)
+logger -> logger: GeneratePostmortem(lessons_learned)
+
+logger -> alerts: TriggerExperimentCompletionAlert()
+activate alerts
+alerts -> sre: SendExperimentSummary(results, mttr=75s)
+deactivate alerts
+
+logger -> orchestrator: IncidentLoggingCompleted(report_id)
+deactivate logger
+
+== Завершение эксперимента ==
+
+orchestrator -> health: FinalHealthCheck()
+health -> bitswap: ComprehensiveHealthCheck()
+bitswap -> health: SystemFullyRecovered(all_components_healthy)
+
+orchestrator -> chaos: ChaosExperimentCompleted(experiment_results)
+deactivate orchestrator
+
+chaos -> sre: ExperimentCompleted(success=true, resilience_validated=true)
+deactivate chaos
+
+== Результаты ==
+
+note over sre
+**Результаты тестирования отказоустойчивости:**
+- Сбои сети: ✅ HANDLED (Circuit breaker activated, 30s recovery)
+- Сбои узлов: ✅ HANDLED (Graceful degradation, 120s auto-recovery)
+- Circuit breaker: ✅ VALIDATED (Open/Close transitions working)
+- Паттерны устойчивости: ✅ VALIDATED (Retry, Timeout, Bulkhead)
+- MTTR: 75s (within SLA of 120s)
+- Постmortem отчет создан
+end note
+
+@enduml

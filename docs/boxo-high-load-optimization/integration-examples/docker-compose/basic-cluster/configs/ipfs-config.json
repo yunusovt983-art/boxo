@@ -1,0 +1,206 @@
+{
+  "API": {
+    "HTTPHeaders": {
+      "Access-Control-Allow-Origin": ["*"],
+      "Access-Control-Allow-Methods": ["GET", "POST", "PUT", "DELETE"],
+      "Access-Control-Allow-Headers": ["*"]
+    }
+  },
+  "Addresses": {
+    "API": "/ip4/0.0.0.0/tcp/5001",
+    "Announce": [],
+    "AppendAnnounce": [],
+    "Gateway": "/ip4/0.0.0.0/tcp/8080",
+    "NoAnnounce": [],
+    "Swarm": [
+      "/ip4/0.0.0.0/tcp/4001",
+      "/ip6/::/tcp/4001",
+      "/ip4/0.0.0.0/udp/4001/quic",
+      "/ip6/::/udp/4001/quic"
+    ]
+  },
+  "AutoNAT": {},
+  "Bootstrap": [
+    "/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN",
+    "/dnsaddr/bootstrap.libp2p.io/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa",
+    "/dnsaddr/bootstrap.libp2p.io/p2p/QmbLHAnMoJPWSCR5Zp9FGkjANBKXHzYhDYsEuqQdyXjFcr",
+    "/dnsaddr/bootstrap.libp2p.io/p2p/QmcZf59bWwK5XFi76CZX89HWgqxVdpFMvLMxVdGAHBQzJf"
+  ],
+  "Datastore": {
+    "BloomFilterSize": 0,
+    "GCPeriod": "1h",
+    "HashOnRead": false,
+    "Spec": {
+      "mounts": [
+        {
+          "child": {
+            "path": "blocks",
+            "shardFunc": "/repo/flatfs/shard/v1/next-to-last/2",
+            "sync": true,
+            "type": "flatfs"
+          },
+          "mountpoint": "/blocks",
+          "prefix": "flatfs.datastore",
+          "type": "measure"
+        },
+        {
+          "child": {
+            "compression": "none",
+            "path": "datastore",
+            "type": "levelds"
+          },
+          "mountpoint": "/",
+          "prefix": "leveldb.datastore",
+          "type": "measure"
+        }
+      ],
+      "type": "mount"
+    },
+    "StorageGCWatermark": 90,
+    "StorageMax": "10GB"
+  },
+  "Discovery": {
+    "MDNS": {
+      "Enabled": true,
+      "Interval": 10
+    }
+  },
+  "Experimental": {
+    "AcceleratedDHTClient": true,
+    "FilestoreEnabled": false,
+    "GraphsyncEnabled": false,
+    "Libp2pStreamMounting": false,
+    "P2pHttpProxy": false,
+    "StrategicProviding": false,
+    "UrlstoreEnabled": false
+  },
+  "Gateway": {
+    "APICommands": [],
+    "HTTPHeaders": {
+      "Access-Control-Allow-Headers": ["X-Requested-With", "Range", "User-Agent"],
+      "Access-Control-Allow-Methods": ["GET"],
+      "Access-Control-Allow-Origin": ["*"]
+    },
+    "NoDNSLink": false,
+    "NoFetch": false,
+    "PathPrefixes": [],
+    "PublicGateways": null,
+    "RootRedirect": "",
+    "Writable": false
+  },
+  "Identity": {
+    "PeerID": "",
+    "PrivKey": ""
+  },
+  "Internal": {},
+  "Ipns": {
+    "RecordLifetime": "",
+    "RepublishPeriod": "",
+    "ResolveCacheSize": 128
+  },
+  "Migration": {
+    "DownloadSources": [],
+    "Keep": ""
+  },
+  "Mounts": {
+    "FuseAllowOther": false,
+    "IPFS": "/ipfs",
+    "IPNS": "/ipns"
+  },
+  "Peering": {
+    "Peers": []
+  },
+  "Plugins": {
+    "Plugins": null
+  },
+  "Provider": {
+    "Strategy": "all"
+  },
+  "Pubsub": {
+    "Router": "gossipsub",
+    "DisableSigning": false
+  },
+  "Reprovider": {
+    "Interval": "22h",
+    "Strategy": "all"
+  },
+  "Routing": {
+    "Type": "dht"
+  },
+  "Swarm": {
+    "AddrFilters": null,
+    "ConnMgr": {
+      "GracePeriod": "20s",
+      "HighWater": 2000,
+      "LowWater": 1000,
+      "Type": "basic"
+    },
+    "DisableBandwidthMetrics": false,
+    "DisableNatPortMap": false,
+    "RelayClient": {
+      "Enabled": true,
+      "StaticRelays": []
+    },
+    "RelayService": {
+      "Enabled": true,
+      "HopLimit": 3,
+      "DurationLimit": "2m",
+      "DataLimit": 131072
+    },
+    "ResourceMgr": {
+      "Enabled": true,
+      "Limits": {
+        "System": {
+          "Conns": 4000,
+          "ConnsInbound": 2000,
+          "ConnsOutbound": 2000,
+          "FD": 8192,
+          "Memory": 4294967296,
+          "Streams": 16000,
+          "StreamsInbound": 8000,
+          "StreamsOutbound": 8000
+        },
+        "Transient": {
+          "Conns": 64,
+          "ConnsInbound": 32,
+          "ConnsOutbound": 32,
+          "FD": 128,
+          "Memory": 67108864,
+          "Streams": 256,
+          "StreamsInbound": 128,
+          "StreamsOutbound": 128
+        },
+        "ServiceDefault": {
+          "Conns": 1024,
+          "ConnsInbound": 512,
+          "ConnsOutbound": 512,
+          "FD": 2048,
+          "Memory": 268435456,
+          "Streams": 4096,
+          "StreamsInbound": 2048,
+          "StreamsOutbound": 2048
+        },
+        "ProtocolDefault": {
+          "Conns": 512,
+          "ConnsInbound": 256,
+          "ConnsOutbound": 256,
+          "FD": 1024,
+          "Memory": 134217728,
+          "Streams": 2048,
+          "StreamsInbound": 1024,
+          "StreamsOutbound": 1024
+        },
+        "PeerDefault": {
+          "Conns": 16,
+          "ConnsInbound": 8,
+          "ConnsOutbound": 8,
+          "FD": 32,
+          "Memory": 16777216,
+          "Streams": 64,
+          "StreamsInbound": 32,
+          "StreamsOutbound": 32
+        }
+      }
+    }
+  }
+}

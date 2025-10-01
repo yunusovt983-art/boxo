@@ -1,0 +1,97 @@
+@startuml Task2_Sequence_BatchProcessing
+title Task 2.3: Batch Processing Sequence Diagram
+
+actor "IPFS Client" as client
+participant "BatchRequestProcessor" as processor
+participant "Priority Queue" as queue
+participant "BatchWorkerPool" as workers
+participant "LoadMonitor" as monitor
+participant "AdaptiveConfig" as config
+database "Blockstore" as blockstore
+
+== Request Submission ==
+client -> processor: SubmitRequest(cid, peerID, priority)
+activate processor
+
+processor -> processor: Determine priority queue
+processor -> queue: Add to priority channel
+activate queue
+
+processor -> client: Return result channel
+deactivate processor
+
+== Batch Accumulation ==
+queue -> processor: Request received
+activate processor
+
+processor -> processor: addToBatch(priority, request)
+processor -> processor: Check batch size
+
+alt Batch size reached
+    processor -> processor: processBatch(priority)
+else Timeout triggered
+    processor -> processor: Timer expires
+    processor -> processor: processBatch(priority)
+end
+
+== Batch Processing ==
+processor -> workers: Submit batch task
+activate workers
+
+workers -> workers: Execute batch handler
+workers -> blockstore: Retrieve blocks
+activate blockstore
+blockstore -> workers: Return blocks
+deactivate blockstore
+
+workers -> processor: Batch results
+deactivate workers
+
+processor -> client: Send results via channels
+deactivate processor
+
+== Metrics & Adaptation ==
+processor -> monitor: Update batch metrics
+activate monitor
+monitor -> monitor: Calculate performance metrics
+monitor -> config: Update configuration if needed
+activate config
+
+alt High load detected
+    config -> config: Scale up (increase batch size, workers)
+    config -> processor: Apply new configuration
+else Low load detected  
+    config -> config: Scale down (decrease resources)
+    config -> processor: Apply new configuration
+end
+
+deactivate config
+deactivate monitor
+deactivate queue
+
+note right of processor
+**Batch Configuration:**
+- Batch sizes: 50-1000 requests
+- Timeout: 1-100ms
+- Priority levels: 4 (Critical/High/Normal/Low)
+- Worker allocation: 25%/25%/33%/17%
+end note
+
+note right of workers
+**Performance Metrics:**
+- Throughput: 471k ops/sec
+- Latency: ~2.3μs per operation
+- Memory: ~900B per operation
+- Concurrent processing capability
+end note
+
+note right of config
+**Adaptive Scaling:**
+- Load threshold high: 0.8
+- Load threshold low: 0.3
+- Scale up factor: 1.5x
+- Scale down factor: 0.8x
+- Adaptation interval: 30s
+end note
+
+@enduml

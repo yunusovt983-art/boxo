@@ -1,0 +1,175 @@
+@startuml Task3_Streaming_Sequence
+title Task 3.3: Последовательность потоковых операций
+
+actor Client as C
+participant "StreamingHandler" as SH
+participant "ChunkManager" as CM
+participant "CompressionEngine" as CE
+participant "StreamProcessor" as SP
+participant "MetadataTracker" as MT
+participant "Blockstore" as BS
+
+== Потоковая запись большого блока ==
+
+C -> SH: StreamPut(ctx, cid, reader[5MB])
+activate SH
+
+SH -> SH: shouldUseStreaming(5MB) -> true
+note right: Размер > 1MB, используем потоковую обработку
+
+SH -> CM: chunkData(reader, chunkSize=256KB)
+activate CM
+
+CM -> CM: readChunk(256KB)
+CM -> CE: shouldCompress(chunk)
+activate CE
+CE -> CE: analyzeCompressibility()
+CE --> CM: compress=true, ratio=0.7
+deactivate CE
+
+CM -> CE: compressChunk(chunk)
+activate CE
+CE --> CM: compressedChunk
+deactivate CE
+
+CM -> BS: Put(ctx, chunkCID, compressedChunk)
+activate BS
+BS --> CM: success
+deactivate BS
+
+CM -> MT: recordChunk(chunkCID, metadata)
+activate MT
+MT -> MT: store chunk info
+MT --> CM: recorded
+deactivate MT
+
+CM -> CM: generateNextChunk()
+note right: Повторяем для всех чанков
+
+CM --> SH: chunking completed
+deactivate CM
+
+SH -> MT: createBlockMetadata(cid, chunkList)
+activate MT
+MT -> BS: Put(ctx, metadataCID, metadata)
+activate BS
+BS --> MT: success
+deactivate BS
+MT --> SH: metadata stored
+deactivate MT
+
+SH --> C: StreamPut completed
+deactivate SH
+
+== Потоковое чтение с восстановлением ==
+
+C -> SH: StreamGet(ctx, cid)
+activate SH
+
+SH -> MT: getBlockMetadata(cid)
+activate MT
+MT -> BS: Get(ctx, metadataCID)
+activate BS
+BS --> MT: metadata
+deactivate BS
+MT --> SH: chunkList, totalSize, compressed
+deactivate MT
+
+SH -> SP: createStreamReader(chunkList)
+activate SP
+
+SP -> SP: initializeReader()
+SP --> SH: streamReader
+deactivate SP
+
+SH --> C: io.ReadCloser
+deactivate SH
+
+== Чтение данных из потока ==
+
+C -> SP: Read(buffer)
+activate SP
+
+SP -> BS: Get(ctx, nextChunkCID)
+activate BS
+BS --> SP: compressedChunk
+deactivate BS
+
+SP -> CE: isCompressed(chunk) -> true
+activate CE
+CE -> CE: decompressChunk(compressedChunk)
+CE --> SP: originalChunk
+deactivate CE
+
+SP -> SP: copyToBuffer(originalChunk, buffer)
+SP --> C: bytesRead
+deactivate SP
+
+note over C, SP
+Процесс повторяется для каждого чанка
+по мере чтения клиентом
+end note
+
+== Обработка ошибок при потоковом чтении ==
+
+C -> SP: Read(buffer)
+activate SP
+
+SP -> BS: Get(ctx, chunkCID)
+activate BS
+BS --> SP: error: chunk not found
+deactivate BS
+
+SP -> SP: handleMissingChunk()
+SP -> MT: verifyChunkIntegrity(chunkCID)
+activate MT
+MT --> SP: chunk should exist
+deactivate MT
+
+SP -> SP: attemptRecovery()
+note right: Попытка восстановления из других источников
+
+SP --> C: error: chunk unavailable
+deactivate SP
+
+== Адаптивное сжатие ==
+
+CM -> CE: analyzeData(chunk)
+activate CE
+
+CE -> CE: calculateEntropy(chunk)
+CE -> CE: estimateCompressionRatio()
+
+alt high compressibility (ratio > 0.8)
+    CE -> CE: skipCompression()
+    CE --> CM: useOriginal=true
+else good compressibility (ratio 0.3-0.8)
+    CE -> CE: compressWithLevel(6)
+    CE --> CM: compressed, ratio
+else excellent compressibility (ratio < 0.3)
+    CE -> CE: compressWithLevel(9)
+    CE --> CM: compressed, ratio
+end
+
+deactivate CE
+
+== Статистика потоковых операций ==
+
+SH -> SH: updateStreamingStats()
+activate SH
+
+SH -> SH: increment streamedBlocks
+SH -> SH: increment chunkedBlocks
+SH -> SH: update compressionRatio
+SH -> SH: update averageChunkSize
+
+note right of SH
+Статистика используется для:
+- Мониторинга производительности
+- Оптимизации параметров
+- Адаптации алгоритмов
+end note
+
+deactivate SH
+
+@enduml

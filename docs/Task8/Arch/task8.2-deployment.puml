@@ -1,0 +1,142 @@
+@startuml task8.2-deployment
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+
+title Deployment Diagram for Task 8.2 - Integration Examples
+
+Deployment_Node(docker_host, "Docker Host", "Linux Server with Docker Engine") {
+    
+    Deployment_Node(ipfs_network, "IPFS Network", "Docker Network: ipfs-cluster-net") {
+        
+        Deployment_Node(ipfs_node_0, "IPFS Node 0", "Docker Container") {
+            Container(ipfs_daemon_0, "IPFS Daemon", "go-ipfs", "IPFS node with server profile")
+        }
+        
+        Deployment_Node(ipfs_node_1, "IPFS Node 1", "Docker Container") {
+            Container(ipfs_daemon_1, "IPFS Daemon", "go-ipfs", "IPFS node with server profile")
+        }
+        
+        Deployment_Node(ipfs_node_2, "IPFS Node 2", "Docker Container") {
+            Container(ipfs_daemon_2, "IPFS Daemon", "go-ipfs", "IPFS node with server profile")
+        }
+        
+        Deployment_Node(cluster_node_0, "Cluster Node 0", "Docker Container") {
+            Container(cluster_service_0, "IPFS-Cluster Service", "ipfs-cluster", "Cluster coordinator and consensus")
+        }
+        
+        Deployment_Node(cluster_node_1, "Cluster Node 1", "Docker Container") {
+            Container(cluster_service_1, "IPFS-Cluster Service", "ipfs-cluster", "Cluster coordinator and consensus")
+        }
+        
+        Deployment_Node(cluster_node_2, "Cluster Node 2", "Docker Container") {
+            Container(cluster_service_2, "IPFS-Cluster Service", "ipfs-cluster", "Cluster coordinator and consensus")
+        }
+        
+        Deployment_Node(cdn_container, "CDN Service", "Docker Container") {
+            Container(cdn_app, "CDN Application", "Go", "High-performance content delivery with Boxo optimizations")
+        }
+    }
+    
+    Deployment_Node(monitoring_network, "Monitoring Network", "Docker Network: monitoring-net") {
+        
+        Deployment_Node(prometheus_container, "Prometheus", "Docker Container") {
+            Container(prometheus_server, "Prometheus Server", "Prometheus", "Metrics collection and storage")
+        }
+        
+        Deployment_Node(grafana_container, "Grafana", "Docker Container") {
+            Container(grafana_server, "Grafana Server", "Grafana", "Metrics visualization and alerting")
+        }
+    }
+    
+    Deployment_Node(load_test_node, "Load Testing", "External Process") {
+        Container(wrk_tool, "wrk Load Generator", "wrk + Lua", "HTTP load testing tool")
+        Container(benchmark_script, "Benchmark Script", "Bash", "Automated performance testing orchestration")
+    }
+}
+
+Deployment_Node(external_clients, "External Clients", "Internet") {
+    Container(web_browsers, "Web Browsers", "HTTP Clients", "End users accessing CDN content")
+    Container(api_clients, "API Clients", "HTTP/REST", "Applications consuming CDN API")
+}
+
+' IPFS Network relationships
+Rel(cluster_service_0, ipfs_daemon_0, "Manages", "HTTP API")
+Rel(cluster_service_1, ipfs_daemon_1, "Manages", "HTTP API")
+Rel(cluster_service_2, ipfs_daemon_2, "Manages", "HTTP API")
+
+Rel(cluster_service_0, cluster_service_1, "Consensus", "libp2p")
+Rel(cluster_service_1, cluster_service_2, "Consensus", "libp2p")
+Rel(cluster_service_2, cluster_service_0, "Consensus", "libp2p")
+
+Rel(ipfs_daemon_0, ipfs_daemon_1, "Block Exchange", "Bitswap/libp2p")
+Rel(ipfs_daemon_1, ipfs_daemon_2, "Block Exchange", "Bitswap/libp2p")
+Rel(ipfs_daemon_2, ipfs_daemon_0, "Block Exchange", "Bitswap/libp2p")
+
+Rel(cdn_app, cluster_service_0, "Content Management", "HTTP API :9094")
+Rel(cdn_app, cluster_service_1, "Content Management", "HTTP API :9095")
+Rel(cdn_app, cluster_service_2, "Content Management", "HTTP API :9096")
+
+' Monitoring relationships
+Rel(cdn_app, prometheus_server, "Metrics Export", "HTTP :9090")
+Rel(cluster_service_0, prometheus_server, "Metrics Export", "HTTP :9090")
+Rel(cluster_service_1, prometheus_server, "Metrics Export", "HTTP :9090")
+Rel(cluster_service_2, prometheus_server, "Metrics Export", "HTTP :9090")
+Rel(ipfs_daemon_0, prometheus_server, "Metrics Export", "HTTP :9090")
+Rel(ipfs_daemon_1, prometheus_server, "Metrics Export", "HTTP :9090")
+Rel(ipfs_daemon_2, prometheus_server, "Metrics Export", "HTTP :9090")
+
+Rel(grafana_server, prometheus_server, "Queries", "HTTP :9091")
+
+' Load testing relationships
+Rel(wrk_tool, cdn_app, "HTTP Load", "HTTP :8080")
+Rel(benchmark_script, wrk_tool, "Orchestrates")
+Rel(benchmark_script, prometheus_server, "Collects Metrics", "HTTP :9091")
+
+' External client relationships
+Rel(web_browsers, cdn_app, "Content Requests", "HTTP :8080")
+Rel(api_clients, cdn_app, "API Requests", "HTTP :8080")
+
+' Port mappings
+note right of cdn_app
+  Exposed Ports:
+  - 8080: HTTP API
+  - 9090: Metrics
+end note
+
+note right of cluster_service_0
+  Exposed Ports:
+  - 9094: HTTP API
+  - 9095: Cluster API
+  - 9096: IPFS Proxy
+end note
+
+note right of prometheus_server
+  Exposed Ports:
+  - 9091: Web UI & API
+end note
+
+note right of grafana_server
+  Exposed Ports:
+  - 3000: Web UI
+  Default: admin/admin
+end note
+
+' Performance characteristics
+note top of ipfs_network
+  Network Configuration:
+  - High water mark: 2000 connections
+  - Low water mark: 1000 connections
+  - Grace period: 30 seconds
+  - Bitswap workers: 1024
+  - Max outstanding: 20MB per peer
+end note
+
+note top of monitoring_network
+  Monitoring Configuration:
+  - Metrics interval: 15 seconds
+  - Retention: 30 days
+  - Alert evaluation: 1 minute
+  - Dashboard refresh: 5 seconds
+end note
+
+SHOW_LEGEND()
+@enduml

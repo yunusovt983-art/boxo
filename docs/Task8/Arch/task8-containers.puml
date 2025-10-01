@@ -1,0 +1,59 @@
+@startuml task8-containers
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Container Diagram for Task 8 - Documentation & Integration System
+
+Person(developer, "Developer", "Implements high-load IPFS applications")
+Person(devops, "DevOps Engineer", "Deploys and manages systems")
+Person(sysadmin, "System Administrator", "Monitors and maintains systems")
+
+System_Boundary(task8, "Task 8 - Documentation & Integration System") {
+    
+    System_Boundary(task8_1, "Task 8.1 - Documentation System") {
+        Container(config_guide, "Configuration Guide", "Markdown", "Comprehensive guide for Boxo parameter tuning (2000+ lines)")
+        Container(deployment_examples, "Deployment Examples", "Markdown + YAML", "Real-world cluster deployment scenarios (1800+ lines)")
+        Container(troubleshooting, "Troubleshooting Guide", "Markdown + Bash", "Problem diagnosis and resolution procedures (1500+ lines)")
+        Container(migration_guide, "Migration Guide", "Markdown + Scripts", "Safe upgrade procedures and rollback plans (1200+ lines)")
+        Container(diagnostic_scripts, "Diagnostic Scripts", "Bash", "Automated health checks and performance validation")
+    }
+    
+    System_Boundary(task8_2, "Task 8.2 - Integration Examples") {
+        Container(cdn_service, "CDN Service Application", "Go", "High-performance content delivery service with Boxo optimizations (300+ lines)")
+        Container(docker_compose, "Docker Compose Stack", "YAML", "Complete IPFS-cluster deployment with monitoring (8 services)")
+        Container(benchmark_scripts, "Benchmarking Scripts", "Bash + Lua", "Automated performance testing and validation (400+ lines)")
+        Container(grafana_dashboard, "Grafana Dashboard", "JSON", "Real-time performance monitoring and alerting (1000+ lines)")
+        Container(monitoring_config, "Monitoring Configuration", "YAML", "Prometheus and Grafana auto-provisioning")
+    }
+}
+
+System_Ext(ipfs_cluster, "IPFS-Cluster", "Distributed content storage")
+System_Ext(prometheus, "Prometheus", "Metrics collection")
+System_Ext(grafana, "Grafana", "Metrics visualization")
+System_Ext(docker_registry, "Docker Registry", "Container images")
+
+' User interactions
+Rel(developer, config_guide, "Reads parameter documentation")
+Rel(developer, cdn_service, "Studies implementation examples")
+Rel(devops, deployment_examples, "Follows deployment procedures")
+Rel(devops, docker_compose, "Deploys test environments")
+Rel(sysadmin, troubleshooting, "Diagnoses performance issues")
+Rel(sysadmin, diagnostic_scripts, "Runs automated checks")
+Rel(sysadmin, grafana_dashboard, "Monitors system health")
+
+' Internal relationships
+Rel(config_guide, deployment_examples, "References configurations")
+Rel(troubleshooting, diagnostic_scripts, "Includes automated tools")
+Rel(migration_guide, diagnostic_scripts, "Uses validation scripts")
+Rel(cdn_service, docker_compose, "Deployed by")
+Rel(benchmark_scripts, cdn_service, "Tests performance of")
+Rel(grafana_dashboard, monitoring_config, "Configured by")
+
+' External system interactions
+Rel(cdn_service, ipfs_cluster, "Integrates with", "HTTP API")
+Rel(docker_compose, ipfs_cluster, "Deploys", "Docker containers")
+Rel(monitoring_config, prometheus, "Configures", "YAML config")
+Rel(grafana_dashboard, grafana, "Displays in", "JSON dashboard")
+Rel(docker_compose, docker_registry, "Pulls images from")
+
+SHOW_LEGEND()
+@enduml

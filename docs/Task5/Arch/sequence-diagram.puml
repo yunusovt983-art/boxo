@@ -1,0 +1,74 @@
+@startuml Task5-Sequence-Diagram
+!theme plain
+
+title Система мониторинга производительности - Диаграмма последовательности
+
+actor "Системный администратор" as Admin
+participant "Web Dashboard" as Dashboard
+participant "Performance Monitor" as PerfMon
+participant "Bottleneck Analyzer" as Analyzer
+participant "Alert Manager" as AlertMgr
+participant "Auto Tuner" as Tuner
+participant "Boxo Components" as Boxo
+participant "Prometheus" as Prom
+participant "External Alerting" as ExtAlert
+
+== Сбор метрик ==
+PerfMon -> Boxo: Собирает метрики Bitswap
+PerfMon -> Boxo: Собирает метрики Blockstore  
+PerfMon -> Boxo: Собирает сетевые метрики
+PerfMon -> PerfMon: Агрегирует метрики
+PerfMon -> Prom: Экспортирует метрики
+
+== Анализ производительности ==
+Analyzer -> PerfMon: Запрашивает метрики
+Analyzer -> Analyzer: Анализирует тренды
+Analyzer -> Analyzer: Обнаруживает аномалии
+Analyzer -> Analyzer: Генерирует рекомендации
+
+== Обнаружение проблемы производительности ==
+Analyzer -> AlertMgr: Уведомляет о проблеме
+AlertMgr -> AlertMgr: Проверяет правила алертов
+AlertMgr -> ExtAlert: Отправляет уведомление
+AlertMgr -> Dashboard: Обновляет статус алертов
+
+== Автоматическая оптимизация ==
+Analyzer -> Tuner: Передает рекомендации
+Tuner -> Tuner: ML предсказание параметров
+Tuner -> Tuner: Оптимизирует конфигурацию
+Tuner -> Boxo: Применяет новые настройки
+Tuner -> PerfMon: Мониторит результат
+
+== Мониторинг администратором ==
+Admin -> Dashboard: Открывает дашборд
+Dashboard -> PerfMon: Запрашивает текущие метрики
+Dashboard -> Analyzer: Запрашивает анализ
+Dashboard -> AlertMgr: Запрашивает статус алертов
+Dashboard -> Tuner: Запрашивает статус оптимизации
+Dashboard -> Admin: Отображает информацию
+
+== Откат при проблемах ==
+alt Обнаружена деградация после оптимизации
+    Tuner -> Tuner: Обнаруживает деградацию
+    Tuner -> Boxo: Откатывает изменения
+    Tuner -> AlertMgr: Уведомляет об откате
+    AlertMgr -> ExtAlert: Отправляет уведомление об откате
+end
+
+== Непрерывный мониторинг ==
+loop Каждые 30 секунд
+    PerfMon -> Boxo: Собирает метрики
+    PerfMon -> Prom: Обновляет метрики
+end
+
+loop Каждые 5 минут  
+    Analyzer -> PerfMon: Анализирует метрики
+    Analyzer -> AlertMgr: Проверяет пороги
+end
+
+loop Каждые 15 минут
+    Tuner -> Analyzer: Получает рекомендации
+    Tuner -> Tuner: Оценивает необходимость изменений
+end
+
+@enduml

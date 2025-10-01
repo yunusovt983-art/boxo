@@ -1,0 +1,68 @@
+@startuml Task2-Component-BatchProcessor
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Task 2.3: Batch Request Processing - Диаграмма компонентов
+
+Container(priority_system, "Priority System", "Go")
+Container(adaptive_config, "Adaptive Configuration", "Go")
+Container(load_monitor, "Load Monitor", "Go")
+Container(metrics_collector, "Metrics Collector", "Go")
+
+Container_Boundary(batch_processor, "Task 2.3: Batch Request Processing") {
+    Component(batch_manager, "BatchRequestProcessor", "Go Service", "Главный менеджер батчевой обработки")
+    Component(batch_accumulator, "Batch Accumulator", "Go Logic", "Накопление запросов в батчи по приоритетам")
+    Component(worker_pools, "BatchWorkerPool", "Go Service", "Пулы воркеров для разных приоритетов")
+    Component(batch_scheduler, "Batch Scheduler", "Go Logic", "Планировщик обработки батчей")
+    Component(result_dispatcher, "Result Dispatcher", "Go Service", "Отправка результатов обратно клиентам")
+    
+    ComponentDb(pending_batches, "Pending Batches", "Map", "Накапливаемые батчи по приоритетам")
+    ComponentDb(batch_timers, "Batch Timers", "Map", "Таймеры для принудительной обработки батчей")
+    ComponentDb(batch_metrics, "Batch Metrics", "Metrics", "Метрики производительности батчевой обработки")
+}
+
+Rel(priority_system, batch_manager, "Приоритизированные запросы")
+Rel(batch_manager, batch_accumulator, "Накопление запросов в батчи")
+Rel(batch_manager, result_dispatcher, "Управление отправкой результатов")
+
+Rel(batch_accumulator, pending_batches, "Добавление запросов в батчи")
+Rel(batch_accumulator, batch_timers, "Управление таймерами батчей")
+Rel(batch_accumulator, batch_scheduler, "Уведомление о готовых батчах")
+
+Rel(batch_scheduler, worker_pools, "Отправка батчей на обработку")
+Rel(batch_scheduler, adaptive_config, "Получение размеров батчей")
+
+Rel(worker_pools, result_dispatcher, "Результаты обработки батчей")
+Rel(worker_pools, batch_metrics, "Метрики обработки")
+
+Rel(result_dispatcher, priority_system, "Результаты для клиентов")
+
+Rel(batch_manager, load_monitor, "Метрики производительности батчей")
+Rel(batch_manager, metrics_collector, "Экспорт метрик батчевой обработки")
+Rel(worker_pools, metrics_collector, "Метрики worker pools")
+
+note right of batch_accumulator
+**Логика батчинга:**
+• Размер батча: 100-1000 (адаптивный)
+• Таймаут батча: 10ms
+• Отдельные батчи по приоритетам
+• Принудительная обработка по таймауту
+end note
+
+note right of worker_pools
+**Распределение воркеров:**
+• Critical: 25% от общего числа
+• High: 25% от общего числа
+• Normal: 33% от общего числа  
+• Low: 17% от общего числа
+• Динамическое изменение размеров
+end note
+
+note right of batch_scheduler
+**Алгоритм планирования:**
+• Приоритет: Critical > High > Normal > Low
+• Проверка готовности батчей каждые 100ms
+• Обработка полных батчей немедленно
+• Таймаут для неполных батчей
+end note
+
+@enduml

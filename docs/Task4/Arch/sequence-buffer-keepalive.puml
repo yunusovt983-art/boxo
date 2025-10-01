@@ -1,0 +1,130 @@
+@startuml Task4-Buffer-KeepAlive-Sequence
+title Task 4.3: Последовательность буферизации и Keep-Alive оптимизации
+
+participant "libp2p Network" as Network
+participant "BufferKeepAliveManager" as BKM
+participant "BandwidthMonitor" as BM
+participant "KeepAliveManager" as KAM
+participant "SlowConnectionDetector" as SCD
+participant "ConnectionBuffer" as CB
+
+== Инициализация соединения ==
+Network -> BKM: Connected(peerID)
+BKM -> CB: CreateConnectionBuffer(peerID)
+CB -> CB: SetDefaultBufferSize(64KB)
+BKM -> BM: StartBandwidthMonitoring(peerID)
+BKM -> KAM: EnableKeepAlive(peerID, isImportant)
+
+alt isImportant (кластерный пир)
+    KAM -> KAM: SetImportanceScore(1.0)
+    KAM -> KAM: SetAdaptiveInterval(baseInterval/2)
+else обычный пир
+    KAM -> KAM: SetImportanceScore(0.5)
+    KAM -> KAM: SetAdaptiveInterval(baseInterval)
+end
+
+== Передача данных и адаптация буферов ==
+Network -> BM: RecordTransfer(peerID, bytesSent, bytesReceived)
+BM -> BM: CalculateBandwidth(peerID)
+BM -> BM: UpdateBandwidthStats(currentRate, peakRate, avgRate)
+
+loop Каждые 10 секунд (BufferAdaptationInterval)
+    BKM -> BM: GetPeerBandwidth(peerID)
+    BM -> BKM: BandwidthData(bandwidth)
+    BKM -> BKM: EstimateLatency(peerID)
+    BKM -> BKM: CalculateBDP(bandwidth, latency)
+    
+    alt bandwidth < LowBandwidthThreshold (100KB/s)
+        BKM -> CB: ShrinkBuffer(currentSize * 0.75)
+    else bandwidth > HighBandwidthThreshold (10MB/s)
+        BKM -> CB: GrowBuffer(currentSize * 1.5)
+    else
+        BKM -> CB: SetOptimalBuffer(bdp)
+    end
+    
+    CB -> CB: ApplyLimits(4KB <= size <= 1MB)
+    CB -> Network: ApplyBufferSize(peerID, newSize)
+end
+
+== Keep-Alive управление ==
+loop Адаптивный интервал (30s для обычных, 15s для важных)
+    KAM -> Network: CheckConnectedness(peerID)
+    
+    alt Соединение активно
+        Network -> KAM: Connected
+        KAM -> KAM: ResetFailureCount()
+        KAM -> KAM: AdaptInterval(increase)
+    else Соединение неактивно или проблемы
+        Network -> KAM: NotConnected/Error
+        KAM -> KAM: IncrementFailures()
+        KAM -> KAM: AdaptInterval(decrease)
+        
+        alt ConsecutiveFailures >= 3
+            KAM -> Network: ClosePeer(peerID)
+            KAM -> BKM: DisableKeepAlive(peerID)
+        end
+    end
+end
+
+== Обнаружение медленных соединений ==
+Network -> SCD: MeasureLatency(peerID)
+SCD -> SCD: RecordLatency(peerID, latency)
+SCD -> SCD: UpdateLatencySamples(peerID)
+
+alt Samples >= SlowConnectionSamples (5)
+    SCD -> SCD: CalculateAverageLatency(peerID)
+    
+    alt AvgLatency > SlowConnectionThreshold (500ms)
+        SCD -> SCD: IncrementConfirmationCount(peerID)
+        
+        alt ConfirmationCount >= 3
+            SCD -> SCD: MarkAsSlow(peerID)
+            SCD -> SCD: EnableBypass(peerID)
+            SCD -> BKM: FindBypassRoutes(peerID)
+            BKM -> Network: GetConnectedPeers()
+            Network -> BKM: PeerList(peers)
+            BKM -> SCD: SetBypassRoutes(peerID, alternativePeers)
+        end
+    else AvgLatency <= Threshold
+        SCD -> SCD: DecrementConfirmationCount(peerID)
+        
+        alt ConfirmationCount == 0 && BypassEnabled
+            SCD -> SCD: DisableBypass(peerID)
+            SCD -> BKM: ClearBypassRoutes(peerID)
+        end
+    end
+end
+
+== Запись активности ==
+Network -> KAM: RecordActivity(peerID)
+KAM -> KAM: UpdateRecentActivity(peerID)
+KAM -> KAM: ResetConsecutiveFailures(peerID)
+
+alt TimeSinceLastProbe < AdaptiveInterval/2
+    KAM -> KAM: IncreaseInterval(peerID) // Очень активное соединение
+end
+
+== Экспорт метрик производительности ==
+loop Каждые 5 секунд
+    BKM -> BM: GetGlobalBandwidthStats()
+    BM -> BKM: BandwidthStats(total, peak, average)
+    
+    BKM -> KAM: GetKeepAliveStats()
+    KAM -> BKM: KeepAliveStats(enabled, failures, probes)
+    
+    BKM -> SCD: GetSlowConnectionStats()
+    SCD -> BKM: SlowConnectionStats(detected, bypassed)
+    
+    BKM -> "Prometheus": ExportBufferMetrics()
+    BKM -> "Prometheus": ExportKeepAliveMetrics()
+    BKM -> "Prometheus": ExportSlowConnectionMetrics()
+end
+
+== Отключение соединения ==
+Network -> BKM: Disconnected(peerID)
+BKM -> CB: RemoveConnectionBuffer(peerID)
+BKM -> KAM: DisableKeepAlive(peerID)
+BKM -> SCD: RemoveConnection(peerID)
+BKM -> BM: StopMonitoring(peerID)
+
+@enduml

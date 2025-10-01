@@ -1,0 +1,33 @@
+@startuml Task3_Level1_Context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title Task 3: Оптимизация блочного хранилища - Контекстная диаграмма (Level 1)
+
+Person(developer, "Разработчик", "Использует оптимизированное блочное хранилище")
+Person(admin, "Администратор", "Мониторит производительность и управляет ресурсами")
+
+System_Boundary(boxo, "Boxo IPFS") {
+    System(blockstore_opt, "Оптимизированное блочное хранилище", "Высокопроизводительное хранилище с многоуровневым кэшированием, батчевыми операциями и управлением памятью")
+}
+
+System_Ext(storage_backends, "Хранилища данных", "Memory, SSD, HDD хранилища")
+System_Ext(monitoring, "Система мониторинга", "Prometheus, Grafana для метрик")
+System_Ext(ipfs_network, "IPFS сеть", "Распределенная сеть IPFS узлов")
+
+Rel(developer, blockstore_opt, "Выполняет операции с блоками", "HTTPS/gRPC")
+Rel(admin, blockstore_opt, "Мониторит и настраивает", "HTTP/Prometheus")
+
+Rel(blockstore_opt, storage_backends, "Хранит данные", "Файловая система/API")
+Rel(blockstore_opt, monitoring, "Отправляет метрики", "HTTP/Prometheus")
+Rel(blockstore_opt, ipfs_network, "Синхронизирует блоки", "libp2p")
+
+note right of blockstore_opt
+  **Ключевые оптимизации:**
+  • Многоуровневое кэширование (Memory/SSD/HDD)
+  • Батчевые операции I/O
+  • Потоковая обработка больших блоков
+  • Интеллектуальное управление памятью
+  • Автоматическая деградация при нагрузке
+end note
+
+@enduml

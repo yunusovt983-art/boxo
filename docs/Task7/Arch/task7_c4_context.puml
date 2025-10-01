@@ -1,0 +1,44 @@
+@startuml Task7_Context_Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title Task 7: Интеграция и тестирование производительности - Context Diagram
+
+Person(developer, "Разработчик", "Разрабатывает и тестирует Bitswap оптимизации")
+Person(devops, "DevOps инженер", "Развертывает и мониторит производительность")
+Person(sre, "SRE", "Обеспечивает надежность и производительность системы")
+
+System_Boundary(task7_boundary, "Task 7: Интеграция и тестирование производительности") {
+    System(load_testing, "Система нагрузочного тестирования", "Комплексное тестирование Bitswap под высокой нагрузкой")
+    System(integration_testing, "Система интеграционного тестирования", "Тестирование взаимодействия компонентов в кластерной среде")
+    System(fault_tolerance, "Система тестирования отказоустойчивости", "Chaos engineering и тестирование восстановления")
+}
+
+System_Ext(bitswap_system, "Bitswap система", "Оптимизированная система обмена блоками")
+System_Ext(ipfs_cluster, "IPFS Cluster", "Кластерная среда IPFS")
+System_Ext(monitoring_system, "Система мониторинга", "Prometheus, Grafana, алерты")
+System_Ext(ci_cd, "CI/CD Pipeline", "Автоматизированное тестирование и развертывание")
+
+Rel(developer, load_testing, "Запускает нагрузочные тесты", "CLI, Makefile")
+Rel(developer, integration_testing, "Выполняет интеграционные тесты", "Go test")
+Rel(developer, fault_tolerance, "Тестирует отказоустойчивость", "Chaos tests")
+
+Rel(devops, load_testing, "Мониторит производительность", "Метрики, отчеты")
+Rel(devops, integration_testing, "Валидирует кластерное развертывание", "Автоматизация")
+Rel(devops, ci_cd, "Настраивает автоматизацию", "GitHub Actions")
+
+Rel(sre, fault_tolerance, "Анализирует отказоустойчивость", "Отчеты о сбоях")
+Rel(sre, monitoring_system, "Мониторит SLA", "Дашборды, алерты")
+
+Rel(load_testing, bitswap_system, "Тестирует под нагрузкой", "10K+ соединений, 100K+ RPS")
+Rel(integration_testing, ipfs_cluster, "Тестирует в кластере", "Межузловое взаимодействие")
+Rel(fault_tolerance, bitswap_system, "Симулирует сбои", "Network failures, node crashes")
+
+Rel(load_testing, monitoring_system, "Отправляет метрики", "Prometheus metrics")
+Rel(integration_testing, monitoring_system, "Экспортирует результаты", "Test results")
+Rel(fault_tolerance, monitoring_system, "Логирует инциденты", "Failure logs")
+
+Rel(ci_cd, load_testing, "Автоматически запускает", "Scheduled tests")
+Rel(ci_cd, integration_testing, "Выполняет в pipeline", "PR validation")
+Rel(ci_cd, fault_tolerance, "Периодически тестирует", "Chaos schedule")
+
+@enduml

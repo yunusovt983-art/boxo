@@ -1,0 +1,80 @@
+@startuml Task5-Code-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Система мониторинга производительности - Диаграмма кода (ключевые интерфейсы)
+
+Component_Boundary(performance_monitor_code, "Performance Monitor - Code Level") {
+    Component(performance_monitor_interface, "PerformanceMonitor", "Interface", "Основной интерфейс для сбора метрик")
+    Component(metrics_collector_impl, "MetricsCollectorImpl", "Struct", "Реализация сборщика метрик")
+    Component(prometheus_exporter_impl, "PrometheusExporterImpl", "Struct", "Реализация экспортера Prometheus")
+    Component(bitswap_metrics, "BitswapMetrics", "Struct", "Структура метрик Bitswap")
+    Component(blockstore_metrics, "BlockstoreMetrics", "Struct", "Структура метрик Blockstore")
+    Component(network_metrics, "NetworkMetrics", "Struct", "Структура сетевых метрик")
+}
+
+Component_Boundary(bottleneck_analyzer_code, "Bottleneck Analyzer - Code Level") {
+    Component(bottleneck_analyzer_interface, "BottleneckAnalyzer", "Interface", "Интерфейс анализатора узких мест")
+    Component(trend_analyzer_impl, "TrendAnalyzerImpl", "Struct", "Реализация анализатора трендов")
+    Component(anomaly_detector_impl, "AnomalyDetectorImpl", "Struct", "Реализация детектора аномалий")
+    Component(recommendation_engine_impl, "RecommendationEngineImpl", "Struct", "Реализация движка рекомендаций")
+    Component(performance_issue, "PerformanceIssue", "Struct", "Структура проблемы производительности")
+    Component(optimization_recommendation, "OptimizationRecommendation", "Struct", "Структура рекомендации по оптимизации")
+}
+
+Component_Boundary(alert_manager_code, "Alert Manager - Code Level") {
+    Component(alert_manager_interface, "AlertManager", "Interface", "Интерфейс менеджера алертов")
+    Component(alert_generator_impl, "AlertGeneratorImpl", "Struct", "Реализация генератора алертов")
+    Component(notification_sender_impl, "NotificationSenderImpl", "Struct", "Реализация отправителя уведомлений")
+    Component(alert_rule, "AlertRule", "Struct", "Структура правила алерта")
+    Component(alert_event, "AlertEvent", "Struct", "Структура события алерта")
+    Component(notification_config, "NotificationConfig", "Struct", "Конфигурация уведомлений")
+}
+
+Component_Boundary(auto_tuner_code, "Auto Tuner - Code Level") {
+    Component(auto_tuner_interface, "AutoTuner", "Interface", "Интерфейс автоматического тюнера")
+    Component(ml_predictor_impl, "MLPredictorImpl", "Struct", "Реализация ML предиктора")
+    Component(config_optimizer_impl, "ConfigOptimizerImpl", "Struct", "Реализация оптимизатора конфигурации")
+    Component(safe_applier_impl, "SafeApplierImpl", "Struct", "Реализация безопасного применения")
+    Component(tuning_parameters, "TuningParameters", "Struct", "Структура параметров тюнинга")
+    Component(optimization_result, "OptimizationResult", "Struct", "Результат оптимизации")
+}
+
+' Relationships within Performance Monitor
+Rel(metrics_collector_impl, performance_monitor_interface, "implements")
+Rel(prometheus_exporter_impl, performance_monitor_interface, "implements")
+Rel(metrics_collector_impl, bitswap_metrics, "collects")
+Rel(metrics_collector_impl, blockstore_metrics, "collects")
+Rel(metrics_collector_impl, network_metrics, "collects")
+Rel(prometheus_exporter_impl, metrics_collector_impl, "uses")
+
+' Relationships within Bottleneck Analyzer
+Rel(trend_analyzer_impl, bottleneck_analyzer_interface, "implements")
+Rel(anomaly_detector_impl, bottleneck_analyzer_interface, "implements")
+Rel(recommendation_engine_impl, bottleneck_analyzer_interface, "implements")
+Rel(trend_analyzer_impl, performance_issue, "creates")
+Rel(anomaly_detector_impl, performance_issue, "creates")
+Rel(recommendation_engine_impl, optimization_recommendation, "creates")
+
+' Relationships within Alert Manager
+Rel(alert_generator_impl, alert_manager_interface, "implements")
+Rel(notification_sender_impl, alert_manager_interface, "implements")
+Rel(alert_generator_impl, alert_rule, "uses")
+Rel(alert_generator_impl, alert_event, "creates")
+Rel(notification_sender_impl, notification_config, "uses")
+Rel(notification_sender_impl, alert_event, "processes")
+
+' Relationships within Auto Tuner
+Rel(ml_predictor_impl, auto_tuner_interface, "implements")
+Rel(config_optimizer_impl, auto_tuner_interface, "implements")
+Rel(safe_applier_impl, auto_tuner_interface, "implements")
+Rel(ml_predictor_impl, tuning_parameters, "predicts")
+Rel(config_optimizer_impl, tuning_parameters, "uses")
+Rel(safe_applier_impl, optimization_result, "creates")
+
+' Cross-component relationships
+Rel(bottleneck_analyzer_interface, performance_monitor_interface, "depends on")
+Rel(alert_manager_interface, bottleneck_analyzer_interface, "depends on")
+Rel(auto_tuner_interface, bottleneck_analyzer_interface, "depends on")
+Rel(auto_tuner_interface, performance_monitor_interface, "depends on")
+
+@enduml

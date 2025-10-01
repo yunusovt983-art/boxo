@@ -1,0 +1,122 @@
+@startuml Task7_Component_LoadTesting
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Task 7.1: Нагрузочное тестирование Bitswap - Component Diagram
+
+Container_Boundary(load_testing_container, "Load Testing Container") {
+    
+    Component_Boundary(core_engine, "Ядро системы тестирования") {
+        Component(load_test_engine, "LoadTestEngine", "Go struct", "Главный движок нагрузочного тестирования")
+        Component(test_orchestrator, "TestOrchestrator", "Go struct", "Оркестрация выполнения тестов")
+        Component(test_config_manager, "TestConfigManager", "Go struct", "Управление конфигурацией тестов")
+        Component(test_validator, "TestValidator", "Go struct", "Валидация результатов тестов")
+    }
+    
+    Component_Boundary(test_types, "Типы тестов") {
+        Component(concurrent_conn_test, "ConcurrentConnectionTest", "Go struct", "Тесты 10,000+ одновременных соединений")
+        Component(throughput_test, "ThroughputTest", "Go struct", "Тесты 100,000+ запросов в секунду")
+        Component(stability_test, "StabilityTest", "Go struct", "Тесты стабильности 24+ часа")
+        Component(extreme_load_test, "ExtremeLoadTest", "Go struct", "Экстремальные сценарии нагрузки")
+        Component(memory_leak_test, "MemoryLeakTest", "Go struct", "Обнаружение утечек памяти")
+        Component(network_condition_test, "NetworkConditionTest", "Go struct", "Тесты различных сетевых условий")
+    }
+    
+    Component_Boundary(benchmarks, "Бенчмарки производительности") {
+        Component(scaling_benchmark, "ScalingBenchmark", "Go benchmark", "Бенчмарки масштабируемости")
+        Component(throughput_benchmark, "ThroughputBenchmark", "Go benchmark", "Бенчмарки пропускной способности")
+        Component(latency_benchmark, "LatencyBenchmark", "Go benchmark", "Бенчмарки латентности")
+        Component(memory_efficiency_benchmark, "MemoryEfficiencyBenchmark", "Go benchmark", "Бенчмарки эффективности памяти")
+    }
+    
+    Component_Boundary(monitoring, "Мониторинг и метрики") {
+        Component(performance_monitor, "PerformanceMonitor", "Go struct", "Мониторинг производительности в реальном времени")
+        Component(resource_monitor, "ResourceMonitor", "Go struct", "Мониторинг системных ресурсов")
+        Component(memory_tracker, "MemoryTracker", "Go struct", "Отслеживание использования памяти")
+        Component(latency_collector, "LatencyCollector", "Go struct", "Сбор метрик латентности")
+        Component(connection_monitor, "ConnectionMonitor", "Go struct", "Мониторинг сетевых соединений")
+    }
+    
+    Component_Boundary(data_management, "Управление данными") {
+        Component(test_data_generator, "TestDataGenerator", "Go struct", "Генерация тестовых данных и блоков")
+        Component(result_collector, "ResultCollector", "Go struct", "Сбор и агрегация результатов")
+        Component(metrics_aggregator, "MetricsAggregator", "Go struct", "Агрегация метрик производительности")
+        Component(report_generator, "ReportGenerator", "Go struct", "Генерация отчетов и визуализация")
+    }
+    
+    Component_Boundary(test_environment, "Тестовое окружение") {
+        Component(test_env_manager, "TestEnvironmentManager", "Go struct", "Управление тестовым окружением")
+        Component(node_manager, "NodeManager", "Go struct", "Управление тестовыми узлами")
+        Component(network_simulator, "NetworkSimulator", "Go struct", "Симуляция сетевых условий")
+        Component(load_generator, "LoadGenerator", "Go struct", "Генерация нагрузки")
+    }
+    
+    Component_Boundary(automation, "Автоматизация") {
+        Component(makefile_runner, "MakefileRunner", "Make", "Автоматизация через Makefile")
+        Component(cli_interface, "CLIInterface", "Go CLI", "Интерфейс командной строки")
+        Component(test_scheduler, "TestScheduler", "Go struct", "Планировщик тестов")
+        Component(ci_integration, "CIIntegration", "Go struct", "Интеграция с CI/CD")
+    }
+}
+
+System_Ext(bitswap_system, "Bitswap System")
+System_Ext(prometheus, "Prometheus")
+System_Ext(file_system, "File System")
+System_Ext(github_actions, "GitHub Actions")
+
+' Взаимодействие внутри ядра
+Rel(load_test_engine, test_orchestrator, "Управляет", "Test execution")
+Rel(test_orchestrator, test_config_manager, "Получает конфигурацию", "Config data")
+Rel(test_orchestrator, test_validator, "Валидирует результаты", "Validation rules")
+
+' Взаимодействие с типами тестов
+Rel(test_orchestrator, concurrent_conn_test, "Запускает", "Connection tests")
+Rel(test_orchestrator, throughput_test, "Запускает", "Throughput tests")
+Rel(test_orchestrator, stability_test, "Запускает", "Stability tests")
+Rel(test_orchestrator, extreme_load_test, "Запускает", "Extreme tests")
+Rel(test_orchestrator, memory_leak_test, "Запускает", "Memory tests")
+Rel(test_orchestrator, network_condition_test, "Запускает", "Network tests")
+
+' Взаимодействие с бенчмарками
+Rel(load_test_engine, scaling_benchmark, "Выполняет", "Scaling benchmarks")
+Rel(load_test_engine, throughput_benchmark, "Выполняет", "Throughput benchmarks")
+Rel(load_test_engine, latency_benchmark, "Выполняет", "Latency benchmarks")
+Rel(load_test_engine, memory_efficiency_benchmark, "Выполняет", "Memory benchmarks")
+
+' Взаимодействие с мониторингом
+Rel(concurrent_conn_test, performance_monitor, "Использует", "Performance metrics")
+Rel(throughput_test, performance_monitor, "Использует", "Throughput metrics")
+Rel(stability_test, resource_monitor, "Использует", "Resource monitoring")
+Rel(memory_leak_test, memory_tracker, "Использует", "Memory tracking")
+Rel(concurrent_conn_test, latency_collector, "Использует", "Latency metrics")
+Rel(concurrent_conn_test, connection_monitor, "Использует", "Connection metrics")
+
+' Взаимодействие с управлением данными
+Rel(test_orchestrator, test_data_generator, "Получает данные", "Test data")
+Rel(test_orchestrator, result_collector, "Отправляет результаты", "Test results")
+Rel(performance_monitor, metrics_aggregator, "Передает метрики", "Raw metrics")
+Rel(result_collector, report_generator, "Передает данные", "Aggregated data")
+
+' Взаимодействие с тестовым окружением
+Rel(test_orchestrator, test_env_manager, "Управляет окружением", "Environment setup")
+Rel(test_env_manager, node_manager, "Управляет узлами", "Node lifecycle")
+Rel(network_condition_test, network_simulator, "Использует", "Network simulation")
+Rel(concurrent_conn_test, load_generator, "Использует", "Load generation")
+Rel(throughput_test, load_generator, "Использует", "High load")
+
+' Взаимодействие с автоматизацией
+Rel(makefile_runner, cli_interface, "Запускает", "CLI commands")
+Rel(cli_interface, load_test_engine, "Управляет", "Test execution")
+Rel(test_scheduler, test_orchestrator, "Планирует", "Scheduled tests")
+Rel(ci_integration, load_test_engine, "Интегрируется", "Automated runs")
+
+' Взаимодействие с внешними системами
+Rel(concurrent_conn_test, bitswap_system, "Тестирует", "10K+ connections")
+Rel(throughput_test, bitswap_system, "Нагружает", "100K+ RPS")
+Rel(stability_test, bitswap_system, "Длительно тестирует", "24h+ stability")
+Rel(extreme_load_test, bitswap_system, "Экстремально нагружает", "Extreme scenarios")
+
+Rel(performance_monitor, prometheus, "Экспортирует", "Prometheus metrics")
+Rel(report_generator, file_system, "Сохраняет отчеты", "HTML/JSON/TXT")
+Rel(ci_integration, github_actions, "Интегрируется", "Workflow triggers")
+
+@enduml

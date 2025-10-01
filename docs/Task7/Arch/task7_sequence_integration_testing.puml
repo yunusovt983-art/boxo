@@ -1,0 +1,167 @@
+@startuml Task7_Sequence_IntegrationTesting
+!theme plain
+
+title Task 7.2: Последовательность выполнения интеграционного тестирования кластера
+
+actor DevOps as devops
+participant "CI/CD Pipeline" as ci
+participant "ClusterTestEngine" as engine
+participant "ClusterOrchestrator" as orchestrator
+participant "MultiNodeManager" as nodes
+participant "InterNodeCommTest" as comm_test
+participant "ClusterMetricsTest" as metrics_test
+participant "ClusterFaultToleranceTest" as fault_test
+participant "IPFSCluster" as cluster
+participant "PrometheusMetrics" as prometheus
+participant "AlertManager" as alerts
+
+== Инициализация кластерного тестирования ==
+
+devops -> ci: Trigger cluster integration tests
+activate ci
+
+ci -> engine: InitializeClusterTesting(cluster_config)
+activate engine
+
+engine -> orchestrator: SetupClusterEnvironment()
+activate orchestrator
+
+orchestrator -> nodes: CreateMultiNodeCluster(node_count=5)
+activate nodes
+
+loop 5 nodes
+    nodes -> cluster: DeployIPFSNode(node_i)
+    activate cluster
+    cluster -> nodes: NodeReady(node_i, peer_id)
+    deactivate cluster
+end
+
+nodes -> orchestrator: ClusterReady(5_nodes, topology)
+deactivate nodes
+
+== Тестирование межузлового взаимодействия ==
+
+orchestrator -> comm_test: RunInterNodeCommunicationTest()
+activate comm_test
+
+comm_test -> cluster: EstablishPeerConnections()
+activate cluster
+
+loop Each node pair
+    comm_test -> cluster: TestPeerConnection(node_i, node_j)
+    cluster -> comm_test: ConnectionResult(latency, success)
+    comm_test -> prometheus: RecordConnectionMetric(node_i, node_j, latency)
+end
+
+comm_test -> cluster: TestBlockExchange()
+
+loop Block exchange test
+    comm_test -> cluster: RequestBlock(block_id, from_node, to_node)
+    cluster -> comm_test: BlockTransferred(transfer_time, success)
+    comm_test -> prometheus: RecordTransferMetric(transfer_time)
+end
+
+deactivate cluster
+
+comm_test -> orchestrator: InterNodeTestResults(avg_latency=25ms, success_rate=99.2%)
+deactivate comm_test
+
+== Валидация метрик кластера ==
+
+orchestrator -> metrics_test: RunClusterMetricsValidation()
+activate metrics_test
+
+metrics_test -> prometheus: CollectClusterMetrics()
+activate prometheus
+
+prometheus -> metrics_test: MetricsData(node_metrics, cluster_metrics)
+deactivate prometheus
+
+metrics_test -> metrics_test: ValidateMetricsConsistency()
+metrics_test -> metrics_test: CheckMetricsThresholds()
+
+alt Metrics validation failed
+    metrics_test -> alerts: TriggerMetricsAlert(validation_error)
+    activate alerts
+    alerts -> devops: SendAlert("Metrics validation failed")
+    deactivate alerts
+end
+
+metrics_test -> orchestrator: MetricsValidationResults(consistency=98%, thresholds_met=true)
+deactivate metrics_test
+
+== Тестирование отказоустойчивости кластера ==
+
+orchestrator -> fault_test: RunClusterFaultToleranceTest()
+activate fault_test
+
+fault_test -> cluster: SimulateNodeFailure(node_3)
+activate cluster
+
+cluster -> fault_test: NodeFailureSimulated(node_3, timestamp)
+
+fault_test -> cluster: MonitorClusterRecovery()
+
+loop Recovery monitoring (5 minutes)
+    cluster -> fault_test: ClusterStatus(active_nodes, connectivity)
+    fault_test -> prometheus: RecordRecoveryMetric(active_nodes)
+    
+    alt All nodes recovered
+        break
+    end
+end
+
+fault_test -> cluster: RestoreFailedNode(node_3)
+cluster -> fault_test: NodeRestored(node_3, recovery_time=45s)
+
+deactivate cluster
+
+fault_test -> orchestrator: FaultToleranceResults(recovery_time=45s, data_loss=0%)
+deactivate fault_test
+
+== Автоматизированное тестирование в CI/CD ==
+
+orchestrator -> ci: ScheduleAutomatedTests()
+
+loop Daily automated tests
+    ci -> orchestrator: RunScheduledClusterTests()
+    orchestrator -> comm_test: QuickInterNodeTest()
+    orchestrator -> metrics_test: MetricsHealthCheck()
+    
+    alt Test failures detected
+        orchestrator -> alerts: TriggerCIAlert(test_failure)
+        alerts -> devops: SendCIFailureNotification()
+    end
+end
+
+== Генерация отчетов ==
+
+orchestrator -> orchestrator: GenerateClusterTestReport()
+
+orchestrator -> prometheus: GetHistoricalMetrics(24h)
+prometheus -> orchestrator: HistoricalData()
+
+orchestrator -> orchestrator: AnalyzeClusterPerformanceTrends()
+orchestrator -> orchestrator: GenerateComplianceReport()
+
+orchestrator -> engine: ClusterTestingCompleted(comprehensive_report)
+deactivate orchestrator
+
+engine -> ci: IntegrationTestsCompleted(exit_code=0, report_path)
+deactivate engine
+
+ci -> devops: Cluster integration tests completed successfully
+deactivate ci
+
+== Результаты ==
+
+note over devops
+**Результаты интеграционного тестирования:**
+- Межузловое взаимодействие: ✅ PASSED (25ms avg latency, 99.2% success)
+- Валидация метрик: ✅ PASSED (98% consistency, thresholds met)
+- Отказоустойчивость: ✅ PASSED (45s recovery time, 0% data loss)
+- CI/CD интеграция: ✅ ACTIVE (automated daily tests)
+- Отчеты сохранены в artifacts/
+end note
+
+@enduml

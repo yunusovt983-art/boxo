@@ -1,0 +1,301 @@
+@startuml Task5-Class-Diagram
+!theme plain
+
+title Система мониторинга производительности - Диаграмма классов
+
+package "Performance Monitor" {
+    interface PerformanceMonitor {
+        +CollectMetrics() error
+        +GetMetrics() *MetricsSnapshot
+        +ExportToPrometheus() error
+        +Start() error
+        +Stop() error
+    }
+    
+    class MetricsCollectorImpl {
+        -bitswapMonitor: BitswapMonitor
+        -blockstoreMonitor: BlockstoreMonitor
+        -networkMonitor: NetworkMonitor
+        -metricsCache: MetricsCache
+        +CollectMetrics() error
+        +GetMetrics() *MetricsSnapshot
+        +aggregateMetrics() *MetricsSnapshot
+    }
+    
+    class PrometheusExporterImpl {
+        -registry: *prometheus.Registry
+        -server: *http.Server
+        -port: int
+        +ExportToPrometheus() error
+        +registerMetrics() error
+        +startServer() error
+    }
+    
+    class BitswapMetrics {
+        +RequestsPerSecond: float64
+        +AverageLatency: time.Duration
+        +ErrorRate: float64
+        +ActiveConnections: int64
+        +BytesTransferred: int64
+        +PeerCount: int64
+        +Timestamp: time.Time
+    }
+    
+    class BlockstoreMetrics {
+        +ReadOperationsPerSecond: float64
+        +WriteOperationsPerSecond: float64
+        +CacheHitRatio: float64
+        +DiskUsage: int64
+        +MemoryUsage: int64
+        +AverageIOLatency: time.Duration
+        +Timestamp: time.Time
+    }
+    
+    class NetworkMetrics {
+        +BandwidthUtilization: float64
+        +ConnectionCount: int64
+        +PacketLossRate: float64
+        +AverageRTT: time.Duration
+        +ThroughputMBps: float64
+        +ErrorCount: int64
+        +Timestamp: time.Time
+    }
+    
+    class MetricsSnapshot {
+        +BitswapMetrics: *BitswapMetrics
+        +BlockstoreMetrics: *BlockstoreMetrics
+        +NetworkMetrics: *NetworkMetrics
+        +Timestamp: time.Time
+        +NodeID: string
+    }
+}
+
+package "Bottleneck Analyzer" {
+    interface BottleneckAnalyzer {
+        +AnalyzeTrends(metrics []*MetricsSnapshot) []*PerformanceIssue
+        +DetectAnomalies(metrics []*MetricsSnapshot) []*PerformanceIssue
+        +GenerateRecommendations(issues []*PerformanceIssue) []*OptimizationRecommendation
+        +Start() error
+        +Stop() error
+    }
+    
+    class TrendAnalyzerImpl {
+        -windowSize: int
+        -thresholds: *AnalysisThresholds
+        +AnalyzeTrends(metrics []*MetricsSnapshot) []*PerformanceIssue
+        -calculateTrend(values []float64) float64
+        -detectDegradation(trend float64) bool
+    }
+    
+    class AnomalyDetectorImpl {
+        -model: *StatisticalModel
+        -sensitivity: float64
+        +DetectAnomalies(metrics []*MetricsSnapshot) []*PerformanceIssue
+        -calculateZScore(value, mean, stddev float64) float64
+        -isAnomaly(zscore float64) bool
+    }
+    
+    class RecommendationEngineImpl {
+        -rules: []*OptimizationRule
+        -knowledgeBase: *KnowledgeBase
+        +GenerateRecommendations(issues []*PerformanceIssue) []*OptimizationRecommendation
+        -matchRules(issue *PerformanceIssue) []*OptimizationRule
+        -prioritizeRecommendations(recommendations []*OptimizationRecommendation) []*OptimizationRecommendation
+    }
+    
+    class PerformanceIssue {
+        +ID: string
+        +Type: IssueType
+        +Severity: Severity
+        +Component: string
+        +Description: string
+        +MetricName: string
+        +CurrentValue: float64
+        +ExpectedValue: float64
+        +DetectedAt: time.Time
+        +AffectedNodes: []string
+    }
+    
+    class OptimizationRecommendation {
+        +ID: string
+        +IssueID: string
+        +Type: RecommendationType
+        +Priority: Priority
+        +Description: string
+        +Parameters: map[string]interface{}
+        +ExpectedImprovement: float64
+        +RiskLevel: RiskLevel
+        +CreatedAt: time.Time
+    }
+    
+    enum IssueType {
+        LATENCY_DEGRADATION
+        THROUGHPUT_DECLINE
+        MEMORY_LEAK
+        CPU_SPIKE
+        DISK_IO_BOTTLENECK
+        NETWORK_CONGESTION
+    }
+    
+    enum Severity {
+        LOW
+        MEDIUM
+        HIGH
+        CRITICAL
+    }
+}
+
+package "Alert Manager" {
+    interface AlertManager {
+        +GenerateAlert(issue *PerformanceIssue) *AlertEvent
+        +SendNotification(alert *AlertEvent) error
+        +ConfigureRules(rules []*AlertRule) error
+        +Start() error
+        +Stop() error
+    }
+    
+    class AlertGeneratorImpl {
+        -rules: []*AlertRule
+        -cooldownPeriod: time.Duration
+        -lastAlerts: map[string]time.Time
+        +GenerateAlert(issue *PerformanceIssue) *AlertEvent
+        -shouldGenerateAlert(issue *PerformanceIssue) bool
+        -createAlertEvent(issue *PerformanceIssue, rule *AlertRule) *AlertEvent
+    }
+    
+    class NotificationSenderImpl {
+        -channels: map[string]NotificationChannel
+        -templates: map[string]*Template
+        +SendNotification(alert *AlertEvent) error
+        -formatMessage(alert *AlertEvent, template *Template) string
+        -sendToChannel(message string, channel NotificationChannel) error
+    }
+    
+    class AlertRule {
+        +ID: string
+        +Name: string
+        +Condition: string
+        +Threshold: float64
+        +Severity: Severity
+        +CooldownPeriod: time.Duration
+        +NotificationChannels: []string
+        +Enabled: bool
+        +CreatedAt: time.Time
+    }
+    
+    class AlertEvent {
+        +ID: string
+        +RuleID: string
+        +IssueID: string
+        +Title: string
+        +Description: string
+        +Severity: Severity
+        +Status: AlertStatus
+        +CreatedAt: time.Time
+        +ResolvedAt: *time.Time
+        +Metadata: map[string]interface{}
+    }
+    
+    enum AlertStatus {
+        FIRING
+        RESOLVED
+        SUPPRESSED
+    }
+}
+
+package "Auto Tuner" {
+    interface AutoTuner {
+        +PredictOptimalParameters(metrics []*MetricsSnapshot) *TuningParameters
+        +OptimizeConfiguration(params *TuningParameters) *OptimizationResult
+        +ApplyConfiguration(config *Configuration) error
+        +RollbackConfiguration() error
+        +Start() error
+        +Stop() error
+    }
+    
+    class MLPredictorImpl {
+        -model: *MachineLearningModel
+        -features: []string
+        -scaler: *DataScaler
+        +PredictOptimalParameters(metrics []*MetricsSnapshot) *TuningParameters
+        -extractFeatures(metrics []*MetricsSnapshot) []float64
+        -predict(features []float64) []float64
+        -convertToParameters(predictions []float64) *TuningParameters
+    }
+    
+    class ConfigOptimizerImpl {
+        -constraints: *OptimizationConstraints
+        -objectives: []OptimizationObjective
+        +OptimizeConfiguration(params *TuningParameters) *OptimizationResult
+        -validateConstraints(params *TuningParameters) error
+        -calculateObjectiveScore(config *Configuration) float64
+    }
+    
+    class SafeApplierImpl {
+        -backupManager: *BackupManager
+        -rollbackTimeout: time.Duration
+        -validationChecks: []ValidationCheck
+        +ApplyConfiguration(config *Configuration) error
+        +RollbackConfiguration() error
+        -createBackup() error
+        -validateApplication(config *Configuration) error
+    }
+    
+    class TuningParameters {
+        +BitswapMaxOutstandingBytesPerPeer: int64
+        +BitswapWorkerPoolSize: int
+        +BlockstoreCacheSize: int64
+        +NetworkConnectionLimits: *ConnectionLimits
+        +BufferSizes: *BufferConfiguration
+        +Confidence: float64
+        +PredictedImprovement: float64
+    }
+    
+    class OptimizationResult {
+        +Success: bool
+        +AppliedParameters: *TuningParameters
+        +ActualImprovement: float64
+        +ExecutionTime: time.Duration
+        +Errors: []error
+        +Timestamp: time.Time
+    }
+}
+
+' Relationships
+PerformanceMonitor <|-- MetricsCollectorImpl
+PerformanceMonitor <|-- PrometheusExporterImpl
+MetricsCollectorImpl --> BitswapMetrics
+MetricsCollectorImpl --> BlockstoreMetrics
+MetricsCollectorImpl --> NetworkMetrics
+MetricsCollectorImpl --> MetricsSnapshot
+
+BottleneckAnalyzer <|-- TrendAnalyzerImpl
+BottleneckAnalyzer <|-- AnomalyDetectorImpl
+BottleneckAnalyzer <|-- RecommendationEngineImpl
+TrendAnalyzerImpl --> PerformanceIssue
+AnomalyDetectorImpl --> PerformanceIssue
+RecommendationEngineImpl --> OptimizationRecommendation
+PerformanceIssue --> IssueType
+PerformanceIssue --> Severity
+
+AlertManager <|-- AlertGeneratorImpl
+AlertManager <|-- NotificationSenderImpl
+AlertGeneratorImpl --> AlertRule
+AlertGeneratorImpl --> AlertEvent
+NotificationSenderImpl --> AlertEvent
+AlertEvent --> AlertStatus
+
+AutoTuner <|-- MLPredictorImpl
+AutoTuner <|-- ConfigOptimizerImpl
+AutoTuner <|-- SafeApplierImpl
+MLPredictorImpl --> TuningParameters
+ConfigOptimizerImpl --> OptimizationResult
+SafeApplierImpl --> OptimizationResult
+
+' Cross-package relationships
+BottleneckAnalyzer ..> MetricsSnapshot : uses
+AlertManager ..> PerformanceIssue : uses
+AutoTuner ..> OptimizationRecommendation : uses
+AutoTuner ..> MetricsSnapshot : uses
+
+@enduml

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task 5: Архитектура системы мониторинга производительности</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+        .header p {
+            margin: 0.5rem 0 0 0;
+            opacity: 0.9;
+        }
+        .diagram-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .diagram-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .diagram-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+        }
+        .diagram-card h3 {
+            color: #667eea;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .diagram-card .icon {
+            font-size: 1.5rem;
+        }
+        .diagram-card p {
+            color: #666;
+            margin-bottom: 1rem;
+        }
+        .diagram-card .links {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background: #5a67d8;
+        }
+        .btn.secondary {
+            background: #718096;
+        }
+        .btn.secondary:hover {
+            background: #4a5568;
+        }
+        .components-section {
+            background: white;
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        .components-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .component-item {
+            background: #f7fafc;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .component-item h4 {
+            margin: 0 0 0.5rem 0;
+            color: #2d3748;
+        }
+        .component-item p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+            border-top: 1px solid #e2e8f0;
+            margin-top: 2rem;
+        }
+        .level-badge {
+            display: inline-block;
+            background: #e2e8f0;
+            color: #4a5568;
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔍 Task 5: Система мониторинга производительности</h1>
+        <p>Архитектурная документация C4 Model для системы мониторинга и метрик производительности Boxo</p>
+    </div>
+
+    <div class="diagram-grid">
+        <div class="diagram-card">
+            <h3><span class="icon">🌐</span> Контекстная диаграмма <span class="level-badge">Level 1</span></h3>
+            <p>Показывает систему мониторинга в контексте пользователей и внешних систем. Демонстрирует основные взаимодействия и потоки данных.</p>
+            <div class="links">
+                <a href="context-diagram.puml" class="btn">Исходный код</a>
+                <a href="https://www.plantuml.com/plantuml/uml/" class="btn secondary" target="_blank">Визуализировать</a>
+            </div>
+        </div>
+
+        <div class="diagram-card">
+            <h3><span class="icon">📦</span> Диаграмма контейнеров <span class="level-badge">Level 2</span></h3>
+            <p>Детализирует высокоуровневую архитектуру системы, показывая основные контейнеры и их взаимодействие.</p>
+            <div class="links">
+                <a href="container-diagram.puml" class="btn">Исходный код</a>
+                <a href="https://www.plantuml.com/plantuml/uml/" class="btn secondary" target="_blank">Визуализировать</a>
+            </div>
+        </div>
+
+        <div class="diagram-card">
+            <h3><span class="icon">🔧</span> Диаграмма компонентов <span class="level-badge">Level 3</span></h3>
+            <p>Показывает внутреннюю структуру контейнеров, детализируя компоненты и их ответственности.</p>
+            <div class="links">
+                <a href="component-diagram.puml" class="btn">Исходный код</a>
+                <a href="https://www.plantuml.com/plantuml/uml/" class="btn secondary" target="_blank">Визуализировать</a>
+            </div>
+        </div>
+
+        <div class="diagram-card">
+            <h3><span class="icon">💻</span> Диаграмма кода <span class="level-badge">Level 4</span></h3>
+            <p>Демонстрирует ключевые интерфейсы, классы и их взаимосвязи на уровне кода.</p>
+            <div class="links">
+                <a href="code-diagram.puml" class="btn">Исходный код</a>
+                <a href="https://www.plantuml.com/plantuml/uml/" class="btn secondary" target="_blank">Визуализировать</a>
+            </div>
+        </div>
+
+        <div class="diagram-card">
+            <h3><span class="icon">⏱️</span> Диаграмма последовательности</h3>
+            <p>Показывает взаимодействие компонентов во времени, включая сценарии мониторинга и автоматической оптимизации.</p>
+            <div class="links">
+                <a href="sequence-diagram.puml" class="btn">Исходный код</a>
+                <a href="https://www.plantuml.com/plantuml/uml/" class="btn secondary" target="_blank">Визуализировать</a>
+            </div>
+        </div>
+
+        <div class="diagram-card">
+            <h3><span class="icon">🏗️</span> Диаграмма развертывания</h3>
+            <p>Описывает физическую архитектуру и инфраструктуру развертывания системы мониторинга.</p>
+            <div class="links">
+                <a href="deployment-diagram.puml" class="btn">Исходный код</a>
+                <a href="https://www.plantuml.com/plantuml/uml/" class="btn secondary" target="_blank">Визуализировать</a>
+            </div>
+        </div>
+
+        <div class="diagram-card">
+            <h3><span class="icon">🔄</span> Диаграмма состояний</h3>
+            <p>Показывает жизненный цикл Auto Tuner и переходы между состояниями оптимизации.</p>
+            <div class="links">
+                <a href="state-diagram.puml" class="btn">Исходный код</a>
+                <a href="https://www.plantuml.com/plantuml/uml/" class="btn secondary" target="_blank">Визуализировать</a>
+            </div>
+        </div>
+
+        <div class="diagram-card">
+            <h3><span class="icon">📊</span> Диаграмма классов</h3>
+            <p>Детализирует структуры данных, интерфейсы и их взаимосвязи в системе мониторинга.</p>
+            <div class="links">
+                <a href="class-diagram.puml" class="btn">Исходный код</a>
+                <a href="https://www.plantuml.com/plantuml/uml/" class="btn secondary" target="_blank">Визуализировать</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="components-section">
+        <h2>🧩 Основные компоненты системы</h2>
+        <div class="components-grid">
+            <div class="component-item">
+                <h4>5.1 Performance Monitor</h4>
+                <p>Сборщик метрик производительности с экспортом в Prometheus</p>
+            </div>
+            <div class="component-item">
+                <h4>5.2 Bottleneck Analyzer</h4>
+                <p>Анализатор узких мест с алгоритмами выявления проблем</p>
+            </div>
+            <div class="component-item">
+                <h4>5.3 Alert Manager</h4>
+                <p>Система алертов и структурированного логирования</p>
+            </div>
+            <div class="component-item">
+                <h4>5.4 Auto Tuner</h4>
+                <p>Автоматический тюнер параметров с ML алгоритмами</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="components-section">
+        <h2>📚 Документация и руководства</h2>
+        <div class="components-grid">
+            <div class="component-item">
+                <h4>🚀 Quick Start</h4>
+                <p><a href="quick-start.md">Быстрый старт</a> - начните здесь для быстрого понимания диаграмм</p>
+            </div>
+            <div class="component-item">
+                <h4>🔍 Подробные объяснения</h4>
+                <p><a href="diagrams-explanation.md">Объяснение диаграмм</a> - связь каждой диаграммы с кодом</p>
+            </div>
+            <div class="component-item">
+                <h4>💼 Практическое руководство</h4>
+                <p><a href="practical-usage-guide.md">Практические примеры</a> - как использовать в разработке</p>
+            </div>
+            <div class="component-item">
+                <h4>🛠️ Интеграция с инструментами</h4>
+                <p><a href="tooling-integration.md">Интеграция</a> - настройка IDE, CI/CD и других инструментов</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="components-section">
+        <h2>📋 Как использовать диаграммы</h2>
+        <ol>
+            <li><strong>Быстрый старт:</strong> Прочитайте <a href="quick-start.md">Quick Start Guide</a> для быстрого понимания</li>
+            <li><strong>Просмотр диаграмм:</strong> Скопируйте содержимое .puml файла и вставьте в <a href="https://www.plantuml.com/plantuml/uml/" target="_blank">PlantUML Online Server</a></li>
+            <li><strong>Локальная генерация:</strong> Используйте <code>make png</code> или PlantUML плагины для IDE</li>
+            <li><strong>Связь с кодом:</strong> Изучите <a href="diagrams-explanation.md">подробные объяснения</a> для понимания соответствия диаграмм коду</li>
+            <li><strong>Практическое применение:</strong> Используйте <a href="practical-usage-guide.md">практическое руководство</a> для интеграции в рабочий процесс</li>
+        </ol>
+    </div>
+
+    <div class="footer">
+        <p>📚 Полная документация доступна в <a href="README.md">README.md</a></p>
+        <p>🔗 Создано в рамках оптимизации Boxo для высокой нагрузки</p>
+    </div>
+</body>
+</html>

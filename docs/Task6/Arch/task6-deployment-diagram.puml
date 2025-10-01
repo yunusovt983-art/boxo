@@ -1,0 +1,91 @@
+@startuml Task6-Deployment-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+
+title Task 6 - Resource Management and Fault Tolerance - Deployment Diagram
+
+Deployment_Node(server, "Production Server", "Linux/Docker") {
+    Deployment_Node(boxo_container, "Boxo IPFS Node", "Docker Container") {
+        Container(boxo_app, "Boxo Application", "Go Binary", "Main IPFS node with Task 6 integration")
+        
+        Container_Boundary(task6_modules, "Task 6 Modules") {
+            Container(resource_monitor, "Resource Monitor", "Go Module", "CPU/Memory/Disk monitoring")
+            Container(graceful_degradation, "Graceful Degradation", "Go Module", "Service quality management")
+            Container(auto_scaler, "Auto Scaler", "Go Module", "Component scaling")
+        }
+        
+        ContainerDb(metrics_cache, "Metrics Cache", "In-Memory", "Recent performance data")
+        ContainerDb(config_files, "Configuration", "JSON/YAML Files", "Thresholds and rules")
+    }
+    
+    Deployment_Node(monitoring_stack, "Monitoring Stack", "Docker Compose") {
+        Container(prometheus, "Prometheus", "Time-series DB", "Metrics collection and storage")
+        Container(grafana, "Grafana", "Dashboard", "Visualization and alerting")
+        Container(alertmanager, "AlertManager", "Alert Router", "Alert routing and notifications")
+    }
+    
+    Deployment_Node(storage, "Persistent Storage", "Docker Volumes") {
+        ContainerDb(prometheus_data, "Prometheus Data", "Time-series Storage", "Historical metrics")
+        ContainerDb(grafana_data, "Grafana Data", "SQLite/PostgreSQL", "Dashboards and users")
+    }
+}
+
+Deployment_Node(external, "External Services", "Cloud/On-premise") {
+    Container(slack, "Slack", "Notification Service", "Team notifications")
+    Container(email, "Email Service", "SMTP", "Email alerts")
+    Container(pagerduty, "PagerDuty", "Incident Management", "Critical alerts")
+    Container(log_aggregator, "Log Aggregator", "ELK/Splunk", "Centralized logging")
+}
+
+' Internal relationships
+Rel(boxo_app, resource_monitor, "Uses")
+Rel(boxo_app, graceful_degradation, "Uses")
+Rel(boxo_app, auto_scaler, "Uses")
+
+Rel(resource_monitor, metrics_cache, "Stores/reads")
+Rel(graceful_degradation, config_files, "Reads rules")
+Rel(auto_scaler, config_files, "Reads rules")
+
+Rel(resource_monitor, prometheus, "Exports metrics", "HTTP :9090")
+Rel(graceful_degradation, prometheus, "Exports metrics", "HTTP :9090")
+Rel(auto_scaler, prometheus, "Exports metrics", "HTTP :9090")
+
+Rel(prometheus, prometheus_data, "Stores")
+Rel(prometheus, grafana, "Provides data", "HTTP :3000")
+Rel(grafana, grafana_data, "Stores config")
+
+Rel(prometheus, alertmanager, "Sends alerts", "HTTP :9093")
+Rel(alertmanager, slack, "Notifications", "Webhook")
+Rel(alertmanager, email, "Notifications", "SMTP")
+Rel(alertmanager, pagerduty, "Critical alerts", "API")
+
+' External logging
+Rel(boxo_app, log_aggregator, "Structured logs", "TCP/UDP")
+
+' Configuration and management
+Rel_U(boxo_container, "Admin", "SSH/API access")
+Rel_U(grafana, "Admin", "Web UI :3000")
+Rel_U(prometheus, "Admin", "Web UI :9090")
+
+note right of boxo_container
+  **Resource Limits:**
+  - CPU: 4 cores
+  - Memory: 8GB
+  - Disk: 100GB SSD
+  
+  **Environment Variables:**
+  - TASK6_MONITORING_INTERVAL=30s
+  - TASK6_CPU_THRESHOLD=80%
+  - TASK6_MEMORY_THRESHOLD=85%
+  - TASK6_DEGRADATION_ENABLED=true
+  - TASK6_AUTOSCALING_ENABLED=true
+end note
+
+note right of monitoring_stack
+  **Monitoring Configuration:**
+  - Prometheus scrape interval: 15s
+  - Grafana refresh rate: 5s
+  - AlertManager group wait: 30s
+  - Data retention: 30 days
+end note
+
+@enduml

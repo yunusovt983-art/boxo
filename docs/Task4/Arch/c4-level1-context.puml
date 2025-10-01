@@ -1,0 +1,35 @@
+@startuml Task4-Context-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title Task 4: Сетевая оптимизация для кластерной среды - Контекстная диаграмма
+
+Person(admin, "Администратор кластера", "Управляет IPFS кластером и мониторит производительность")
+Person(developer, "Разработчик приложения", "Использует IPFS для хранения и обмена данными")
+Person(devops, "DevOps инженер", "Настраивает и оптимизирует сетевые параметры")
+
+System_Boundary(boxo_cluster, "IPFS Cluster с оптимизированным Boxo") {
+    System(boxo_optimized, "Boxo с сетевой оптимизацией", "Оптимизированная библиотека с адаптивным управлением соединениями, буферизацией и мониторингом качества")
+}
+
+System_Ext(ipfs_nodes, "Внешние IPFS узлы", "Узлы IPFS сети для обмена данными")
+System_Ext(monitoring, "Система мониторинга", "Prometheus, Grafana для сбора метрик")
+System_Ext(load_balancer, "Балансировщик нагрузки", "Распределение запросов между узлами кластера")
+
+Rel(admin, boxo_optimized, "Мониторит производительность", "HTTP/gRPC")
+Rel(developer, boxo_optimized, "Использует для обмена данными", "libp2p")
+Rel(devops, boxo_optimized, "Настраивает параметры", "Config API")
+
+Rel(boxo_optimized, ipfs_nodes, "Обменивается блоками", "Bitswap/libp2p")
+Rel(boxo_optimized, monitoring, "Отправляет метрики", "Prometheus metrics")
+Rel(load_balancer, boxo_optimized, "Распределяет нагрузку", "HTTP/libp2p")
+
+note right of boxo_optimized
+  **Ключевые оптимизации:**
+  • Адаптивное управление соединениями
+  • Интеллектуальная буферизация
+  • Мониторинг качества соединений
+  • Обнаружение медленных соединений
+  • Автоматическое переключение маршрутов
+end note
+
+@enduml

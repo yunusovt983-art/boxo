@@ -1,0 +1,224 @@
+@startuml Task3_Memory_Sequence
+title Task 3.4: Последовательность управления памятью
+
+actor Client as C
+participant "MemoryAwareBlockstore" as MAB
+participant "MemoryMonitor" as MM
+participant "PressureDetector" as PD
+participant "DegradationController" as DC
+participant "CleanupScheduler" as CS
+participant "MultiTierCache" as MTC
+participant "GCCoordinator" as GC
+
+== Инициализация системы мониторинга ==
+
+MAB -> MM: Start(ctx)
+activate MM
+
+MM -> MM: startMonitoringLoop()
+MM -> PD: initialize(thresholds)
+activate PD
+PD --> MM: ready
+deactivate PD
+
+MM -> MM: schedulePeriodicCheck(5s)
+MM --> MAB: monitoring started
+deactivate MM
+
+== Нормальная операция при низком давлении памяти ==
+
+C -> MAB: Put(ctx, block)
+activate MAB
+
+MAB -> MM: getCurrentPressure()
+activate MM
+MM -> PD: checkCurrentLevel()
+activate PD
+PD -> PD: usageRatio = 45%
+PD --> MM: MemoryPressureLevel.None
+deactivate PD
+MM --> MAB: None
+deactivate MM
+
+MAB -> MTC: Put(ctx, block)
+activate MTC
+MTC --> MAB: success
+deactivate MTC
+
+MAB --> C: success
+deactivate MAB
+
+== Обнаружение роста давления памяти ==
+
+MM -> MM: periodicMemoryCheck()
+activate MM
+
+MM -> PD: analyzeMemoryUsage()
+activate PD
+PD -> PD: currentUsage = 850MB
+PD -> PD: totalMemory = 1024MB
+PD -> PD: usageRatio = 83%
+PD -> PD: pressureLevel = High (threshold 80%)
+PD --> MM: MemoryPressureLevel.High
+deactivate PD
+
+MM -> DC: onPressureChange(High)
+activate DC
+DC -> DC: setDegradationLevel(3)
+DC -> CS: scheduleAggressiveCleanup()
+activate CS
+CS --> DC: cleanup scheduled
+deactivate CS
+DC --> MM: degradation activated
+deactivate DC
+
+MM -> MAB: notifyPressureChange(High)
+MAB -> MAB: updateOperationPolicy()
+
+deactivate MM
+
+== Операция при высоком давлении памяти ==
+
+C -> MAB: Put(ctx, largeBlock[10MB])
+activate MAB
+
+MAB -> MM: getCurrentPressure()
+activate MM
+MM --> MAB: MemoryPressureLevel.High
+deactivate MM
+
+MAB -> DC: shouldRejectOperation(Put, 10MB)
+activate DC
+DC -> DC: checkDegradationLevel(3)
+DC -> DC: largeBlock + highPressure = reject
+DC --> MAB: reject=true
+deactivate DC
+
+MAB --> C: error: ErrMemoryPressure
+deactivate MAB
+
+== Автоматическая очистка кэша ==
+
+CS -> CS: executeScheduledCleanup()
+activate CS
+
+CS -> MTC: getCleanupCandidates(aggressiveness=high)
+activate MTC
+MTC -> MTC: identifyLRUBlocks()
+MTC -> MTC: calculateCleanupSize(target=200MB)
+MTC --> CS: candidateList[150 blocks]
+deactivate MTC
+
+loop for each candidate
+    CS -> MTC: evictBlock(cid)
+    activate MTC
+    MTC -> MTC: removeFromMemoryTier()
+    MTC -> MTC: demoteToSSDTier()
+    MTC --> CS: evicted
+    deactivate MTC
+end
+
+CS -> MM: reportCleanupCompleted(freedMemory=180MB)
+activate MM
+MM -> PD: recheckPressureLevel()
+activate PD
+PD -> PD: newUsageRatio = 65%
+PD --> MM: MemoryPressureLevel.Low
+deactivate PD
+MM --> CS: pressure reduced
+deactivate MM
+
+deactivate CS
+
+== Критическое давление памяти с принудительной GC ==
+
+MM -> PD: checkMemoryUsage()
+activate MM
+activate PD
+PD -> PD: usageRatio = 97%
+PD --> MM: MemoryPressureLevel.Critical
+deactivate PD
+
+MM -> GC: forceGarbageCollection()
+activate GC
+GC -> GC: runtime.GC()
+GC -> GC: runtime.GC() // второй вызов для полной очистки
+GC -> GC: waitForGCCompletion()
+GC --> MM: GC completed
+deactivate GC
+
+MM -> PD: recheckAfterGC()
+activate PD
+PD -> PD: newUsageRatio = 92%
+PD --> MM: MemoryPressureLevel.High
+deactivate PD
+
+alt still critical pressure
+    MM -> DC: activateEmergencyMode()
+    activate DC
+    DC -> DC: setDegradationLevel(4)
+    DC -> MAB: rejectAllWrites()
+    DC -> CS: emergencyCleanup()
+    activate CS
+    CS -> MTC: clearAllCaches()
+    activate MTC
+    MTC --> CS: caches cleared
+    deactivate MTC
+    CS --> DC: emergency cleanup done
+    deactivate CS
+    DC --> MM: emergency mode active
+    deactivate DC
+else pressure reduced
+    MM -> DC: maintainHighPressureMode()
+    activate DC
+    DC --> MM: maintaining level 3
+    deactivate DC
+end
+
+deactivate MM
+
+== Восстановление после снижения давления ==
+
+MM -> PD: checkMemoryUsage()
+activate MM
+activate PD
+PD -> PD: usageRatio = 55%
+PD --> MM: MemoryPressureLevel.None
+deactivate PD
+
+MM -> DC: onPressureReduced(None)
+activate DC
+DC -> DC: setDegradationLevel(0)
+DC -> MAB: restoreNormalOperations()
+DC -> CS: cancelAggressiveCleanup()
+activate CS
+CS --> DC: cleanup canceled
+deactivate CS
+DC --> MM: normal operations restored
+deactivate DC
+
+MM -> MAB: notifyPressureNormalized()
+MAB -> MAB: enableFullFunctionality()
+
+deactivate MM
+
+== Мониторинг и метрики ==
+
+MM -> MM: collectMetrics()
+activate MM
+
+MM -> MM: calculateMemoryStats()
+MM -> MM: updatePrometheusMetrics()
+
+note right of MM
+Экспортируемые метрики:
+- memory_usage_ratio
+- memory_pressure_level  
+- gc_cycles_total
+- rejected_ops_total
+- cache_cleanup_ops_total
+end note
+
+deactivate MM
+
+@enduml

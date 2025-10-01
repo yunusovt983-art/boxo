@@ -1,0 +1,78 @@
+@startuml task8.1-components
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Component Diagram for Task 8.1 - Documentation System
+
+Container_Boundary(task8_1, "Task 8.1 - Documentation System") {
+    
+    Component_Boundary(config_system, "Configuration Documentation") {
+        Component(quick_start, "Quick Start Guide", "Markdown", "Immediate setup for common scenarios")
+        Component(param_reference, "Parameter Reference", "Markdown Table", "50+ parameters with descriptions and ranges")
+        Component(scenario_configs, "Scenario Configurations", "Go Code + Markdown", "Small/Medium/Large cluster configurations")
+        Component(env_tuning, "Environment Tuning", "Markdown", "Development/Staging/Production specific settings")
+        Component(dynamic_config, "Dynamic Configuration", "Go Code", "Runtime configuration management examples")
+        Component(validation_rules, "Configuration Validation", "Go Code", "Parameter validation and best practices")
+    }
+    
+    Component_Boundary(deployment_system, "Deployment Examples") {
+        Component(cdn_deployment, "CDN Deployment", "YAML + Markdown", "High-throughput content delivery configuration")
+        Component(dev_platform, "Development Platform", "YAML + Markdown", "Collaborative development environment")
+        Component(iot_hub, "IoT Data Hub", "YAML + Markdown", "High-frequency data collection setup")
+        Component(media_streaming, "Media Streaming", "YAML + Markdown", "Real-time media delivery platform")
+        Component(docker_examples, "Docker Compose Examples", "YAML", "Container-based deployments")
+        Component(k8s_examples, "Kubernetes Examples", "YAML", "Production-ready orchestration")
+    }
+    
+    Component_Boundary(troubleshooting_system, "Troubleshooting System") {
+        Component(health_check, "Health Check Scripts", "Bash", "Automated system diagnostics")
+        Component(performance_diag, "Performance Diagnostics", "Bash", "Response time and throughput analysis")
+        Component(memory_analysis, "Memory Analysis", "Bash", "Memory leak detection and monitoring")
+        Component(network_diag, "Network Diagnostics", "Bash", "Connection and latency troubleshooting")
+        Component(circuit_breaker, "Circuit Breaker Analysis", "Bash", "Failure protection diagnostics")
+        Component(emergency_procedures, "Emergency Procedures", "Bash + Markdown", "Critical situation response")
+    }
+    
+    Component_Boundary(migration_system, "Migration System") {
+        Component(compatibility_matrix, "Compatibility Matrix", "Markdown Table", "Version compatibility information")
+        Component(migration_scenarios, "Migration Scenarios", "Bash + Markdown", "Direct/Staged/Full migration paths")
+        Component(backup_procedures, "Backup Procedures", "Bash", "Pre-migration data protection")
+        Component(validation_tests, "Post-Migration Validation", "Bash", "Automated migration verification")
+        Component(rollback_procedures, "Rollback Procedures", "Bash", "Safe migration reversal")
+    }
+}
+
+System_Ext(boxo_lib, "Boxo Library", "Configuration parameters and APIs")
+System_Ext(ipfs_cluster_api, "IPFS-Cluster API", "Cluster management interface")
+System_Ext(prometheus_api, "Prometheus API", "Metrics collection")
+
+' Internal relationships
+Rel(quick_start, scenario_configs, "References")
+Rel(param_reference, validation_rules, "Validates against")
+Rel(scenario_configs, env_tuning, "Customized by")
+Rel(dynamic_config, validation_rules, "Uses")
+
+Rel(cdn_deployment, docker_examples, "Implemented in")
+Rel(dev_platform, k8s_examples, "Deployed via")
+Rel(iot_hub, docker_examples, "Containerized in")
+Rel(media_streaming, k8s_examples, "Orchestrated by")
+
+Rel(health_check, performance_diag, "Includes")
+Rel(health_check, memory_analysis, "Includes")
+Rel(health_check, network_diag, "Includes")
+Rel(emergency_procedures, health_check, "Uses")
+Rel(performance_diag, circuit_breaker, "Analyzes")
+
+Rel(migration_scenarios, compatibility_matrix, "References")
+Rel(migration_scenarios, backup_procedures, "Executes")
+Rel(migration_scenarios, validation_tests, "Runs")
+Rel(rollback_procedures, backup_procedures, "Restores from")
+
+' External relationships
+Rel(param_reference, boxo_lib, "Documents")
+Rel(scenario_configs, boxo_lib, "Configures")
+Rel(health_check, ipfs_cluster_api, "Queries")
+Rel(performance_diag, prometheus_api, "Collects metrics from")
+Rel(validation_tests, ipfs_cluster_api, "Validates against")
+
+SHOW_LEGEND()
+@enduml

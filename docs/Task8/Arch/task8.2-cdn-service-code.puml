@@ -1,0 +1,141 @@
+@startuml task8.2-cdn-service-code
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Code Diagram for Task 8.2 - CDN Service Application
+
+Container_Boundary(cdn_service, "CDN Service Application") {
+    
+    Component_Boundary(config_layer, "Configuration Layer") {
+        Component(cdn_config, "CDNConfig", "Go Struct", "Configuration parameters for CDN optimization")
+        Component(config_validator, "ConfigValidator", "Go Interface", "Validates configuration parameters")
+        Component(config_loader, "ConfigLoader", "Go Function", "Loads configuration from environment/file")
+    }
+    
+    Component_Boundary(service_layer, "Service Layer") {
+        Component(cdn_service_core, "CDNService", "Go Struct", "Main service orchestrator")
+        Component(content_handler, "ContentHandler", "Go HTTP Handler", "HTTP request processing and routing")
+        Component(health_handler, "HealthHandler", "Go HTTP Handler", "Health check and diagnostics endpoint")
+        Component(metrics_handler, "MetricsHandler", "Go HTTP Handler", "Prometheus metrics endpoint")
+    }
+    
+    Component_Boundary(integration_layer, "IPFS-Cluster Integration Layer") {
+        Component(cluster_client, "ClusterClient", "Go Interface", "IPFS-cluster API client wrapper")
+        Component(content_resolver, "ContentResolver", "Go Service", "Resolves content from cluster")
+        Component(pin_manager, "PinManager", "Go Service", "Manages content pinning operations")
+        Component(peer_manager, "PeerManager", "Go Service", "Manages cluster peer connections")
+    }
+    
+    Component_Boundary(optimization_layer, "Boxo Optimization Layer") {
+        Component(bitswap_config, "BitswapConfig", "Go Struct", "Optimized Bitswap parameters")
+        Component(worker_pool, "WorkerPool", "Go Service", "Configurable worker pool for concurrent operations")
+        Component(batch_processor, "BatchProcessor", "Go Service", "Batch processing for improved throughput")
+        Component(connection_manager, "ConnectionManager", "Go Service", "Optimized network connection management")
+    }
+    
+    Component_Boundary(caching_layer, "Caching Layer") {
+        Component(lru_cache, "LRUCache", "Go Interface", "Least Recently Used cache implementation")
+        Component(cache_stats, "CacheStats", "Go Struct", "Cache hit/miss statistics")
+        Component(compression_engine, "CompressionEngine", "Go Service", "Content compression for cache efficiency")
+        Component(prefetch_engine, "PrefetchEngine", "Go Service", "Predictive content prefetching")
+    }
+    
+    Component_Boundary(monitoring_layer, "Monitoring Layer") {
+        Component(prometheus_metrics, "PrometheusMetrics", "Go Struct", "Prometheus metric collectors")
+        Component(request_metrics, "RequestMetrics", "Go Service", "HTTP request metrics collection")
+        Component(performance_metrics, "PerformanceMetrics", "Go Service", "System performance metrics")
+        Component(error_tracker, "ErrorTracker", "Go Service", "Error rate and type tracking")
+    }
+}
+
+System_Ext(ipfs_cluster_api, "IPFS-Cluster API", "REST API for cluster operations")
+System_Ext(prometheus_server, "Prometheus Server", "Metrics collection server")
+System_Ext(boxo_bitswap, "Boxo Bitswap", "Optimized block exchange protocol")
+System_Ext(http_clients, "HTTP Clients", "CDN service consumers")
+
+' Configuration Layer relationships
+Rel(config_loader, cdn_config, "Creates")
+Rel(config_validator, cdn_config, "Validates")
+Rel(cdn_service_core, cdn_config, "Uses")
+
+' Service Layer relationships
+Rel(cdn_service_core, content_handler, "Registers")
+Rel(cdn_service_core, health_handler, "Registers")
+Rel(cdn_service_core, metrics_handler, "Registers")
+Rel(content_handler, cdn_service_core, "Delegates to")
+
+' Integration Layer relationships
+Rel(cdn_service_core, cluster_client, "Uses")
+Rel(content_resolver, cluster_client, "Queries via")
+Rel(pin_manager, cluster_client, "Manages pins via")
+Rel(peer_manager, cluster_client, "Manages peers via")
+Rel(content_handler, content_resolver, "Resolves content via")
+
+' Optimization Layer relationships
+Rel(cdn_config, bitswap_config, "Configures")
+Rel(cdn_service_core, worker_pool, "Manages")
+Rel(worker_pool, batch_processor, "Processes batches via")
+Rel(cdn_service_core, connection_manager, "Uses")
+Rel(bitswap_config, connection_manager, "Configures")
+
+' Caching Layer relationships
+Rel(cdn_service_core, lru_cache, "Uses")
+Rel(lru_cache, cache_stats, "Updates")
+Rel(lru_cache, compression_engine, "Compresses via")
+Rel(content_resolver, prefetch_engine, "Triggers prefetch via")
+Rel(prefetch_engine, lru_cache, "Populates")
+
+' Monitoring Layer relationships
+Rel(cdn_service_core, prometheus_metrics, "Registers")
+Rel(content_handler, request_metrics, "Reports to")
+Rel(cdn_service_core, performance_metrics, "Reports to")
+Rel(content_handler, error_tracker, "Reports errors to")
+Rel(metrics_handler, prometheus_metrics, "Exposes")
+
+' Cross-layer relationships
+Rel(content_resolver, lru_cache, "Caches content in")
+Rel(batch_processor, content_resolver, "Resolves content via")
+Rel(worker_pool, pin_manager, "Executes pin operations via")
+Rel(health_handler, cache_stats, "Reports")
+Rel(health_handler, performance_metrics, "Reports")
+
+' External system relationships
+Rel(cluster_client, ipfs_cluster_api, "Communicates with", "HTTP/REST")
+Rel(prometheus_metrics, prometheus_server, "Exports to", "HTTP metrics endpoint")
+Rel(bitswap_config, boxo_bitswap, "Configures", "Go API")
+Rel(content_handler, http_clients, "Serves", "HTTP responses")
+
+' Code-level details
+note right of cdn_config
+  type CDNConfig struct {
+    MaxOutstandingBytesPerPeer int64
+    WorkerCount               int
+    BatchSize                 int
+    CacheSize                 int64
+    CompressionEnabled        bool
+    PrefetchEnabled           bool
+  }
+end note
+
+note right of cdn_service_core
+  type CDNService struct {
+    config      *CDNConfig
+    clusterAPI  *client.Client
+    cache       *lru.Cache
+    metrics     *CDNMetrics
+    blockstore  blockstore.Blockstore
+    bitswap     *bitswap.Bitswap
+  }
+end note
+
+note right of prometheus_metrics
+  Metrics include:
+  - cdn_requests_total
+  - cdn_request_duration_seconds
+  - cdn_cache_hits_total
+  - cdn_cache_misses_total
+  - cdn_active_connections
+  - cdn_errors_total
+end note
+
+SHOW_LEGEND()
+@enduml

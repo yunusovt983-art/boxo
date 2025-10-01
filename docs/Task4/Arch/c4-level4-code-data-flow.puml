@@ -1,0 +1,97 @@
+@startuml Task4-Data-Flow-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Task 4: Поток данных и взаимодействие компонентов
+
+participant "libp2p Network" as Network
+participant "AdaptiveConnManager" as ACM
+participant "ConnectionQuality" as CQ
+participant "BufferKeepAliveManager" as BKM
+participant "BandwidthMonitor" as BM
+participant "KeepAliveManager" as KAM
+participant "SlowConnectionDetector" as SCD
+
+== Установка соединения ==
+Network -> ACM: Connected(peer)
+ACM -> CQ: CreateConnectionInfo(peer)
+ACM -> BKM: InitializeBuffers(peer)
+BKM -> BM: StartMonitoring(peer)
+BKM -> KAM: EnableKeepAlive(peer, isCluster)
+
+== Передача данных ==
+Network -> BM: RecordTransfer(peer, sent, received)
+BM -> BM: CalculateBandwidth()
+BM -> BKM: UpdateBandwidth(peer, bandwidth)
+BKM -> BKM: AdaptBufferSize(peer, bandwidth, latency)
+
+== Мониторинг качества ==
+loop Каждые 30 секунд
+    CQ -> Network: MeasureLatency(peer)
+    Network -> CQ: LatencyResult(latency)
+    CQ -> BM: GetBandwidth(peer)
+    BM -> CQ: BandwidthData(bandwidth)
+    CQ -> CQ: CalculateQualityScore()
+    
+    alt Качество < 0.3
+        CQ -> CQ: FindAlternativeRoutes(peer)
+    end
+end
+
+== Keep-Alive управление ==
+loop Адаптивный интервал
+    KAM -> Network: CheckConnectedness(peer)
+    Network -> KAM: ConnectionStatus(status)
+    
+    alt Соединение активно
+        KAM -> KAM: RecordActivity(peer)
+        KAM -> KAM: AdaptInterval(peer, increase)
+    else Соединение неактивно
+        KAM -> Network: SendKeepAlive(peer)
+        alt Неудача
+            KAM -> KAM: IncrementFailures(peer)
+            alt Failures >= 3
+                KAM -> Network: ClosePeer(peer)
+            end
+        end
+    end
+end
+
+== Обнаружение медленных соединений ==
+CQ -> SCD: RecordLatency(peer, latency)
+SCD -> SCD: UpdateLatencySamples(peer)
+
+alt Samples >= 5
+    SCD -> SCD: CalculateAverageLatency(peer)
+    alt AvgLatency > Threshold
+        SCD -> SCD: IncrementConfirmation(peer)
+        alt Confirmations >= 3
+            SCD -> SCD: MarkAsSlow(peer)
+            SCD -> CQ: FindBypassRoutes(peer)
+        end
+    end
+end
+
+== Адаптация к нагрузке ==
+loop Каждые 10 секунд
+    ACM -> ACM: GetCurrentLoad()
+    
+    alt Load > HighThreshold
+        ACM -> ACM: IncreaseConnectionLimits()
+        ACM -> ACM: DecreaseGracePeriod()
+    else Load < LowThreshold
+        ACM -> ACM: DecreaseConnectionLimits()
+        ACM -> ACM: IncreaseGracePeriod()
+    end
+    
+    ACM -> Network: ApplyNewLimits()
+end
+
+== Экспорт метрик ==
+loop Каждые 5 секунд
+    ACM -> "Prometheus": ExportConnectionMetrics()
+    CQ -> "Prometheus": ExportQualityMetrics()
+    BKM -> "Prometheus": ExportBufferMetrics()
+    BM -> "Prometheus": ExportBandwidthMetrics()
+end
+
+@enduml

@@ -1,0 +1,116 @@
+@startuml Task3_Level3_Component
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Task 3: MultiTier Cache System - Компонентная диаграмма (Level 3)
+
+Container_Boundary(multitier_system, "MultiTier Cache System") {
+    
+    Component(multitier_interface, "MultiTierBlockstore Interface", "Go Interface", "Основной интерфейс многоуровневого кэширования")
+    
+    Component(tier_manager, "Tier Manager", "Go Component", "Управление уровнями кэширования и их конфигурацией")
+    
+    Component(lru_engine, "LRU Engine", "Go Component", "LRU алгоритм с учетом частоты доступа")
+    
+    Component(promotion_engine, "Promotion Engine", "Go Component", "Автоматическое продвижение блоков между уровнями")
+    
+    Component(access_tracker, "Access Tracker", "Go Component", "Отслеживание паттернов доступа к блокам")
+    
+    Component(stats_collector, "Stats Collector", "Go Component", "Сбор статистики по каждому уровню")
+    
+    Component(compaction_manager, "Compaction Manager", "Go Component", "Периодическое обслуживание и очистка")
+}
+
+Container_Boundary(batch_io_system, "Batch I/O System") {
+    
+    Component(batch_interface, "BatchIOManager Interface", "Go Interface", "API для батчевых операций")
+    
+    Component(operation_queue, "Operation Queue", "Go Component", "Очереди для разных типов операций")
+    
+    Component(worker_pool, "Worker Pool", "Go Component", "Пул goroutines для асинхронной обработки")
+    
+    Component(batch_processor, "Batch Processor", "Go Component", "Группировка и обработка батчей")
+    
+    Component(transaction_mgr, "Transaction Manager", "Go Component", "Транзакционные операции и retry логика")
+    
+    Component(batch_stats, "Batch Statistics", "Go Component", "Статистика батчевых операций")
+}
+
+Container_Boundary(streaming_system, "Streaming System") {
+    
+    Component(streaming_interface, "StreamingHandler Interface", "Go Interface", "API для потоковых операций")
+    
+    Component(chunk_manager, "Chunk Manager", "Go Component", "Разбиение и сборка больших блоков")
+    
+    Component(compression_engine, "Compression Engine", "Go Component", "Адаптивное сжатие данных")
+    
+    Component(stream_processor, "Stream Processor", "Go Component", "Потоковая обработка без загрузки в память")
+    
+    Component(metadata_tracker, "Metadata Tracker", "Go Component", "Отслеживание метаданных чанков")
+}
+
+Container_Boundary(memory_system, "Memory Management System") {
+    
+    Component(memory_monitor, "Memory Monitor", "Go Component", "Мониторинг использования памяти в реальном времени")
+    
+    Component(pressure_detector, "Pressure Detector", "Go Component", "Определение уровней давления памяти")
+    
+    Component(degradation_controller, "Degradation Controller", "Go Component", "Управление graceful degradation")
+    
+    Component(cleanup_scheduler, "Cleanup Scheduler", "Go Component", "Автоматическая очистка кэша")
+    
+    Component(gc_coordinator, "GC Coordinator", "Go Component", "Координация сборки мусора")
+}
+
+ContainerDb(memory_cache, "Memory Cache", "LRU Cache", "Быстрый кэш в памяти")
+ContainerDb(ssd_cache, "SSD Cache", "File Cache", "Кэш на SSD")
+ContainerDb(hdd_storage, "HDD Storage", "File Storage", "Основное хранилище")
+
+System_Ext(prometheus, "Prometheus", "Метрики")
+
+' MultiTier Cache взаимодействия
+Rel(multitier_interface, tier_manager, "Управляет уровнями")
+Rel(tier_manager, lru_engine, "Применяет LRU политику")
+Rel(lru_engine, access_tracker, "Использует статистику доступа")
+Rel(promotion_engine, access_tracker, "Анализирует паттерны")
+Rel(promotion_engine, tier_manager, "Перемещает блоки")
+Rel(stats_collector, tier_manager, "Собирает метрики")
+Rel(compaction_manager, tier_manager, "Выполняет обслуживание")
+
+' Batch I/O взаимодействия
+Rel(batch_interface, operation_queue, "Ставит операции в очередь")
+Rel(operation_queue, worker_pool, "Распределяет задачи")
+Rel(worker_pool, batch_processor, "Обрабатывает батчи")
+Rel(batch_processor, transaction_mgr, "Выполняет транзакции")
+Rel(batch_stats, worker_pool, "Собирает статистику")
+
+' Streaming взаимодействия
+Rel(streaming_interface, chunk_manager, "Управляет чанками")
+Rel(chunk_manager, compression_engine, "Сжимает данные")
+Rel(stream_processor, chunk_manager, "Обрабатывает потоки")
+Rel(metadata_tracker, chunk_manager, "Отслеживает метаданные")
+
+' Memory Management взаимодействия
+Rel(memory_monitor, pressure_detector, "Передает метрики памяти")
+Rel(pressure_detector, degradation_controller, "Сигнализирует о давлении")
+Rel(degradation_controller, cleanup_scheduler, "Триггерит очистку")
+Rel(gc_coordinator, memory_monitor, "Координирует GC")
+
+' Межсистемные взаимодействия
+Rel(memory_monitor, multitier_interface, "Уведомляет о давлении памяти")
+Rel(degradation_controller, batch_interface, "Ограничивает операции")
+Rel(cleanup_scheduler, tier_manager, "Очищает кэши")
+
+' Связи с хранилищами
+Rel(tier_manager, memory_cache, "Управляет Memory Tier")
+Rel(tier_manager, ssd_cache, "Управляет SSD Tier")
+Rel(tier_manager, hdd_storage, "Управляет HDD Tier")
+
+Rel(batch_processor, hdd_storage, "Выполняет батчевые операции")
+Rel(stream_processor, hdd_storage, "Сохраняет чанки")
+
+' Метрики
+Rel(stats_collector, prometheus, "Экспортирует метрики кэша")
+Rel(batch_stats, prometheus, "Экспортирует метрики батчей")
+Rel(memory_monitor, prometheus, "Экспортирует метрики памяти")
+
+@enduml

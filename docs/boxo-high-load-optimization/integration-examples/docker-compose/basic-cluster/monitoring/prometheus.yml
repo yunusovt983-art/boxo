@@ -1,0 +1,74 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert-rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # IPFS Cluster nodes
+  - job_name: 'ipfs-cluster'
+    static_configs:
+      - targets: 
+        - 'cluster-0:8888'
+        - 'cluster-1:8888'
+        - 'cluster-2:8888'
+    scrape_interval: 15s
+    metrics_path: /debug/metrics/prometheus
+    params:
+      format: ['prometheus']
+
+  # IPFS nodes
+  - job_name: 'ipfs'
+    static_configs:
+      - targets:
+        - 'ipfs-0:5001'
+        - 'ipfs-1:5001'
+        - 'ipfs-2:5001'
+    scrape_interval: 15s
+    metrics_path: /debug/metrics/prometheus
+    params:
+      format: ['prometheus']
+
+  # Node exporter for system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets:
+        - 'node-exporter:9100'
+    scrape_interval: 15s
+
+  # Custom application metrics
+  - job_name: 'boxo-applications'
+    static_configs:
+      - targets:
+        - 'cdn-service:8080'
+        - 'media-streaming:8081'
+        - 'iot-hub:8082'
+    scrape_interval: 5s
+    metrics_path: /metrics
+
+  # Load balancer metrics
+  - job_name: 'nginx'
+    static_configs:
+      - targets:
+        - 'nginx-lb:9113'
+    scrape_interval: 15s
+
+# Remote write configuration for long-term storage
+remote_write:
+  - url: "http://victoriametrics:8428/api/v1/write"
+    queue_config:
+      max_samples_per_send: 10000
+      batch_send_deadline: 5s
+      max_shards: 200

@@ -1,0 +1,91 @@
+@startuml Task2-Deployment-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+
+title Task 2: Диаграмма развертывания - Высокопроизводительная IPFS среда
+
+Deployment_Node(high_load_server, "High-Load IPFS Server", "Linux Server, 32+ CPU cores, 64+ GB RAM") {
+    Deployment_Node(app_container, "Application Container", "Docker") {
+        Container(boxo_app, "Boxo Application", "Go", "IPFS приложение с оптимизированным Bitswap")
+        Container(metrics_exporter, "Metrics Exporter", "Prometheus", "Экспорт метрик производительности")
+    }
+    
+    Deployment_Node(storage_layer, "Storage Layer", "NVMe SSD") {
+        ContainerDb(blockstore, "IPFS Blockstore", "Badger/LevelDB", "Высокопроизводительное хранилище блоков")
+        ContainerDb(cache_layer, "Memory Cache", "In-Memory", "Кэш часто используемых блоков")
+    }
+}
+
+Deployment_Node(peer_server1, "IPFS Peer Server 1", "Standard Server") {
+    Container(peer_app1, "IPFS Node", "Go", "Стандартный IPFS узел")
+}
+
+Deployment_Node(peer_server2, "IPFS Peer Server 2", "Standard Server") {
+    Container(peer_app2, "IPFS Node", "Go", "Стандартный IPFS узел")
+}
+
+Deployment_Node(peer_server3, "IPFS Peer Server N", "Standard Server") {
+    Container(peer_appN, "IPFS Node", "Go", "Стандартный IPFS узел")
+}
+
+Deployment_Node(monitoring_server, "Monitoring Server", "Linux Server") {
+    Container(prometheus, "Prometheus", "Time Series DB", "Сбор и хранение метрик")
+    Container(grafana, "Grafana", "Visualization", "Визуализация метрик производительности")
+    Container(alertmanager, "AlertManager", "Alerting", "Система алертов при деградации")
+}
+
+Deployment_Node(load_balancer, "Load Balancer", "HAProxy/Nginx") {
+    Container(lb_service, "Load Balancer", "HAProxy", "Распределение нагрузки между узлами")
+}
+
+' Network connections
+Rel(boxo_app, peer_app1, "Bitswap Protocol", "libp2p/TCP")
+Rel(boxo_app, peer_app2, "Bitswap Protocol", "libp2p/TCP") 
+Rel(boxo_app, peer_appN, "Bitswap Protocol", "libp2p/TCP")
+
+Rel(boxo_app, blockstore, "Block I/O", "Local FS")
+Rel(boxo_app, cache_layer, "Cache Access", "Memory")
+
+Rel(metrics_exporter, prometheus, "Metrics Export", "HTTP/9090")
+Rel(prometheus, grafana, "Data Query", "HTTP/3000")
+Rel(prometheus, alertmanager, "Alert Rules", "HTTP/9093")
+
+Rel(lb_service, boxo_app, "Request Distribution", "HTTP/API")
+
+' Performance annotations
+note right of boxo_app
+**Task 2 Оптимизации:**
+• >1000 одновременных соединений
+• <100ms P95 response time
+• Адаптивные лимиты: 1MB-100MB per peer
+• Worker pools: 128-2048 workers
+• Batch processing: 100-1000 requests
+• Circuit breaker protection
+end note
+
+note right of blockstore
+**Storage Performance:**
+• NVMe SSD для минимальной латентности
+• Badger DB для высокой пропускной способности
+• Memory cache для горячих блоков
+end note
+
+note right of prometheus
+**Мониторинг метрик:**
+• Requests per second
+• P95 response time
+• Outstanding requests
+• Worker pool utilization
+• Circuit breaker state
+• Batch processing metrics
+end note
+
+' Resource specifications
+note top of high_load_server
+**Системные требования:**
+• CPU: 32+ cores для параллельной обработки
+• RAM: 64+ GB для кэширования и буферов
+• Network: 10+ Gbps для высокой пропускной способности
+• Storage: NVMe SSD для минимальной I/O латентности
+end note
+
+@enduml

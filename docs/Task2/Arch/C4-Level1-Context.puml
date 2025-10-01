@@ -1,0 +1,32 @@
+@startuml Task2-Context-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title Task 2: Оптимизация Bitswap для высокой пропускной способности - Контекстная диаграмма
+
+Person(developer, "Разработчик IPFS", "Использует Boxo для высокопроизводительных IPFS операций")
+Person(admin, "Системный администратор", "Мониторит производительность и настраивает параметры")
+
+System_Boundary(boxo, "Boxo IPFS Implementation") {
+    System(bitswap_optimized, "Optimized Bitswap Layer", "Высокопроизводительный слой обмена блоками с адаптивным управлением")
+}
+
+System_Ext(ipfs_peers, "IPFS Peers", "Внешние IPFS узлы для обмена блоками")
+System_Ext(blockstore, "Block Storage", "Локальное хранилище блоков")
+System_Ext(monitoring_system, "Monitoring System", "Система мониторинга метрик производительности")
+
+Rel(developer, bitswap_optimized, "Выполняет запросы блоков", "Bitswap API")
+Rel(admin, bitswap_optimized, "Настраивает и мониторит", "Configuration API")
+
+Rel(bitswap_optimized, ipfs_peers, "Обменивается блоками", "libp2p/Bitswap Protocol")
+Rel(bitswap_optimized, blockstore, "Читает/записывает блоки", "Blockstore API")
+Rel(bitswap_optimized, monitoring_system, "Отправляет метрики", "Prometheus/HTTP")
+
+note right of bitswap_optimized
+**Ключевые оптимизации:**
+• >1000 одновременных запросов
+• <100ms P95 время отклика
+• Адаптивное управление ресурсами
+• Приоритизация критических запросов
+end note
+
+@enduml

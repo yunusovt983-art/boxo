@@ -1,0 +1,80 @@
+@startuml Task4.2-Component-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Task 4.2: Мониторинг качества соединений - Диаграмма компонентов
+
+Container_Boundary(quality_monitor, "Монитор качества соединений") {
+    
+    Component(quality_tracker, "ConnectionQualityTracker", "Go struct", "Отслеживание и оценка качества соединений")
+    
+    Component(latency_monitor, "LatencyMonitor", "Go struct", "Измерение и анализ латентности соединений")
+    
+    Component(bandwidth_monitor, "BandwidthMonitor", "Go struct", "Мониторинг пропускной способности")
+    
+    Component(error_tracker, "ErrorRateTracker", "Go struct", "Отслеживание частоты ошибок соединений")
+    
+    Component(route_optimizer, "RouteOptimizer", "Go struct", "Поиск и переключение на альтернативные маршруты")
+    
+    Component(quality_scorer, "QualityScorer", "Go struct", "Алгоритм комплексной оценки качества")
+    
+    Component(metrics_aggregator, "MetricsAggregator", "Go struct", "Агрегация и экспорт метрик качества")
+}
+
+Container_Ext(libp2p_ping, "libp2p Ping", "Сервис измерения латентности")
+Container_Ext(adaptive_conn_mgr, "Adaptive Conn Manager", "Менеджер соединений")
+Container_Ext(prometheus, "Prometheus", "Система метрик")
+
+' Основные взаимодействия
+Rel(quality_tracker, latency_monitor, "Получает данные латентности", "GetLatencyStats()")
+Rel(quality_tracker, bandwidth_monitor, "Получает данные пропускной способности", "GetBandwidthStats()")
+Rel(quality_tracker, error_tracker, "Получает статистику ошибок", "GetErrorRate()")
+Rel(quality_tracker, quality_scorer, "Запрашивает оценку", "CalculateQualityScore()")
+
+Rel(quality_scorer, route_optimizer, "Передает плохие соединения", "FindAlternativeRoutes()")
+Rel(route_optimizer, quality_tracker, "Получает альтернативы", "GetHighQualityConnections()")
+
+Rel(latency_monitor, libp2p_ping, "Измеряет латентность", "Ping()")
+Rel(bandwidth_monitor, adaptive_conn_mgr, "Получает данные передач", "RecordTransfer()")
+Rel(error_tracker, adaptive_conn_mgr, "Получает данные об ошибках", "RecordRequest()")
+
+Rel(quality_tracker, metrics_aggregator, "Передает метрики", "RecordQualityMetrics()")
+Rel(latency_monitor, metrics_aggregator, "Передает метрики латентности", "RecordLatencyMetrics()")
+Rel(bandwidth_monitor, metrics_aggregator, "Передает метрики пропускной способности", "RecordBandwidthMetrics()")
+
+Rel(metrics_aggregator, prometheus, "Экспортирует метрики", "Prometheus metrics")
+Rel(quality_tracker, adaptive_conn_mgr, "Предоставляет качество", "GetConnectionQuality()")
+
+note right of quality_tracker
+  **ConnectionQuality структура:**
+  • Latency, Bandwidth, ErrorRate
+  • AvgLatency, AvgBandwidth, AvgErrorRate
+  • QualityScore (0.0-1.0)
+  • TotalRequests, SuccessfulRequests
+  • AlternativeRoutes, PreferredRoute
+end note
+
+note right of quality_scorer
+  **Алгоритм оценки:**
+  • Латентность: 40% веса
+  • Пропускная способность: 30% веса
+  • Частота ошибок: 30% веса
+  • Диапазон: 0-200ms, 0-10MB/s, 0-10%
+end note
+
+note right of route_optimizer
+  **Оптимизация маршрутов:**
+  • Поиск альтернатив для плохих соединений
+  • Критерий: улучшение на 10%+
+  • Автоматическое переключение
+  • Подсчет изменений маршрутов
+end note
+
+note right of latency_monitor
+  **Измерение латентности:**
+  • libp2p ping сервис
+  • Fallback через время соединения
+  • Экспоненциальное сглаживание
+  • Таймаут 5 секунд
+end note
+
+@enduml

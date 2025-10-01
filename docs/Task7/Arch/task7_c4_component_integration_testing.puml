@@ -1,0 +1,120 @@
+@startuml Task7_Component_IntegrationTesting
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Task 7.2: Интеграционное тестирование кластера - Component Diagram
+
+Container_Boundary(integration_testing_container, "Integration Testing Container") {
+    
+    Component_Boundary(cluster_testing_core, "Ядро кластерного тестирования") {
+        Component(cluster_test_engine, "ClusterTestEngine", "Go struct", "Движок интеграционного тестирования кластера")
+        Component(cluster_orchestrator, "ClusterOrchestrator", "Go struct", "Оркестрация кластерных тестов")
+        Component(cluster_config_manager, "ClusterConfigManager", "Go struct", "Управление конфигурацией кластера")
+        Component(test_scenario_manager, "TestScenarioManager", "Go struct", "Управление тестовыми сценариями")
+    }
+    
+    Component_Boundary(cluster_tests, "Кластерные тесты") {
+        Component(inter_node_comm_test, "InterNodeCommTest", "Go struct", "Тесты межузлового взаимодействия")
+        Component(cluster_metrics_test, "ClusterMetricsTest", "Go struct", "Тесты метрик кластера")
+        Component(cluster_fault_tolerance_test, "ClusterFaultToleranceTest", "Go struct", "Тесты отказоустойчивости кластера")
+        Component(cluster_scaling_test, "ClusterScalingTest", "Go struct", "Тесты масштабирования кластера")
+        Component(cluster_performance_test, "ClusterPerformanceTest", "Go struct", "Тесты производительности кластера")
+    }
+    
+    Component_Boundary(metrics_validation, "Валидация метрик") {
+        Component(metrics_validator, "MetricsValidator", "Go struct", "Валидатор метрик кластера")
+        Component(alert_validator, "AlertValidator", "Go struct", "Валидатор алертов")
+        Component(sla_validator, "SLAValidator", "Go struct", "Валидатор SLA требований")
+        Component(performance_validator, "PerformanceValidator", "Go struct", "Валидатор производительности")
+    }
+    
+    Component_Boundary(cluster_monitoring, "Мониторинг кластера") {
+        Component(cluster_metrics_collector, "ClusterMetricsCollector", "Go struct", "Сборщик метрик кластера")
+        Component(node_health_monitor, "NodeHealthMonitor", "Go struct", "Мониторинг здоровья узлов")
+        Component(network_topology_monitor, "NetworkTopologyMonitor", "Go struct", "Мониторинг топологии сети")
+        Component(resource_usage_monitor, "ResourceUsageMonitor", "Go struct", "Мониторинг использования ресурсов")
+        Component(alert_manager, "AlertManager", "Go struct", "Управление алертами")
+    }
+    
+    Component_Boundary(cluster_environment, "Кластерное окружение") {
+        Component(cluster_env_manager, "ClusterEnvironmentManager", "Go struct", "Управление кластерным окружением")
+        Component(multi_node_manager, "MultiNodeManager", "Go struct", "Управление множественными узлами")
+        Component(network_config_manager, "NetworkConfigManager", "Go struct", "Управление сетевой конфигурацией")
+        Component(cluster_data_generator, "ClusterDataGenerator", "Go struct", "Генерация данных для кластера")
+    }
+    
+    Component_Boundary(test_automation, "Автоматизация тестирования") {
+        Component(ci_cd_integration, "CICDIntegration", "Go struct", "Интеграция с CI/CD pipeline")
+        Component(automated_test_runner, "AutomatedTestRunner", "Go struct", "Автоматический запуск тестов")
+        Component(test_scheduler, "TestScheduler", "Go struct", "Планировщик тестов")
+        Component(regression_detector, "RegressionDetector", "Go struct", "Детектор регрессий")
+    }
+    
+    Component_Boundary(reporting, "Отчетность") {
+        Component(cluster_test_reporter, "ClusterTestReporter", "Go struct", "Генератор отчетов кластерных тестов")
+        Component(metrics_dashboard, "MetricsDashboard", "Go struct", "Дашборд метрик")
+        Component(trend_analyzer, "TrendAnalyzer", "Go struct", "Анализатор трендов")
+        Component(compliance_reporter, "ComplianceReporter", "Go struct", "Отчеты соответствия требованиям")
+    }
+}
+
+System_Ext(ipfs_cluster, "IPFS Cluster")
+System_Ext(prometheus, "Prometheus")
+System_Ext(grafana, "Grafana")
+System_Ext(github_actions, "GitHub Actions")
+System_Ext(slack, "Slack")
+
+' Взаимодействие внутри ядра
+Rel(cluster_test_engine, cluster_orchestrator, "Управляет", "Test orchestration")
+Rel(cluster_orchestrator, cluster_config_manager, "Получает конфигурацию", "Cluster config")
+Rel(cluster_orchestrator, test_scenario_manager, "Управляет сценариями", "Test scenarios")
+
+' Взаимодействие с кластерными тестами
+Rel(cluster_orchestrator, inter_node_comm_test, "Запускает", "Inter-node tests")
+Rel(cluster_orchestrator, cluster_metrics_test, "Запускает", "Metrics tests")
+Rel(cluster_orchestrator, cluster_fault_tolerance_test, "Запускает", "Fault tolerance tests")
+Rel(cluster_orchestrator, cluster_scaling_test, "Запускает", "Scaling tests")
+Rel(cluster_orchestrator, cluster_performance_test, "Запускает", "Performance tests")
+
+' Взаимодействие с валидацией метрик
+Rel(cluster_metrics_test, metrics_validator, "Использует", "Metrics validation")
+Rel(cluster_metrics_test, alert_validator, "Использует", "Alert validation")
+Rel(cluster_performance_test, sla_validator, "Использует", "SLA validation")
+Rel(cluster_performance_test, performance_validator, "Использует", "Performance validation")
+
+' Взаимодействие с мониторингом кластера
+Rel(inter_node_comm_test, cluster_metrics_collector, "Использует", "Cluster metrics")
+Rel(cluster_fault_tolerance_test, node_health_monitor, "Использует", "Node health")
+Rel(cluster_scaling_test, network_topology_monitor, "Использует", "Network topology")
+Rel(cluster_performance_test, resource_usage_monitor, "Использует", "Resource usage")
+Rel(cluster_metrics_test, alert_manager, "Использует", "Alert management")
+
+' Взаимодействие с кластерным окружением
+Rel(cluster_orchestrator, cluster_env_manager, "Управляет окружением", "Environment setup")
+Rel(cluster_env_manager, multi_node_manager, "Управляет узлами", "Node management")
+Rel(cluster_env_manager, network_config_manager, "Настраивает сеть", "Network config")
+Rel(cluster_orchestrator, cluster_data_generator, "Получает данные", "Test data")
+
+' Взаимодействие с автоматизацией
+Rel(ci_cd_integration, automated_test_runner, "Запускает", "Automated runs")
+Rel(automated_test_runner, cluster_test_engine, "Управляет", "Test execution")
+Rel(test_scheduler, cluster_orchestrator, "Планирует", "Scheduled tests")
+Rel(regression_detector, cluster_test_engine, "Анализирует", "Regression analysis")
+
+' Взаимодействие с отчетностью
+Rel(cluster_orchestrator, cluster_test_reporter, "Передает результаты", "Test results")
+Rel(cluster_metrics_collector, metrics_dashboard, "Передает метрики", "Metrics data")
+Rel(cluster_test_reporter, trend_analyzer, "Анализирует тренды", "Historical data")
+Rel(sla_validator, compliance_reporter, "Передает соответствие", "Compliance data")
+
+' Взаимодействие с внешними системами
+Rel(inter_node_comm_test, ipfs_cluster, "Тестирует", "Inter-node communication")
+Rel(cluster_metrics_test, ipfs_cluster, "Собирает метрики", "Cluster metrics")
+Rel(cluster_fault_tolerance_test, ipfs_cluster, "Тестирует отказоустойчивость", "Fault scenarios")
+Rel(cluster_scaling_test, ipfs_cluster, "Тестирует масштабирование", "Scaling scenarios")
+
+Rel(cluster_metrics_collector, prometheus, "Экспортирует", "Prometheus metrics")
+Rel(metrics_dashboard, grafana, "Создает дашборды", "Dashboard config")
+Rel(ci_cd_integration, github_actions, "Интегрируется", "Workflow automation")
+Rel(alert_manager, slack, "Отправляет уведомления", "Alert notifications")
+
+@enduml

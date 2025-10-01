@@ -1,0 +1,87 @@
+@startuml Task6-Component-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Task 6 - Resource Management and Fault Tolerance - Component Diagram
+
+Container_Boundary(resource_monitor, "Resource Monitor Container") {
+    Component(resource_collector, "Resource Collector", "Interface", "Collects system metrics (CPU, memory, disk)")
+    Component(resource_history, "Resource History", "Component", "Stores and analyzes historical data")
+    Component(predictive_analyzer, "Predictive Analyzer", "Component", "Analyzes trends and predicts resource usage")
+    Component(alert_system, "Alert System", "Component", "Generates warnings and critical alerts")
+    Component(resource_api, "Resource Monitor API", "Interface", "Public API for resource monitoring")
+}
+
+Container_Boundary(graceful_degradation, "Graceful Degradation Container") {
+    Component(degradation_manager, "Degradation Manager", "Interface", "Manages degradation levels and recovery")
+    Component(degradation_rules, "Degradation Rules Engine", "Component", "Evaluates conditions and triggers actions")
+    Component(degradation_actions, "Degradation Actions", "Component", "Executes 13 types of degradation actions")
+    Component(recovery_manager, "Recovery Manager", "Component", "Handles automatic and manual recovery")
+    Component(degradation_api, "Degradation API", "Interface", "Public API for degradation management")
+}
+
+Container_Boundary(auto_scaler, "Auto Scaler Container") {
+    Component(scaling_engine, "Scaling Engine", "Interface", "Core scaling logic and rule evaluation")
+    Component(scaling_rules, "Scaling Rules Manager", "Component", "Manages scaling rules and priorities")
+    Component(component_registry, "Component Registry", "Component", "Registers and manages scalable components")
+    Component(isolation_manager, "Isolation Manager", "Component", "Isolates and restores problematic components")
+    Component(scaling_history, "Scaling History", "Component", "Tracks scaling events and metrics")
+    Component(scaling_api, "Auto Scaler API", "Interface", "Public API for scaling operations")
+}
+
+Container_Boundary(scalable_components, "Scalable Components Container") {
+    Component(worker_pool, "Worker Pool Component", "Component", "Scalable worker thread management")
+    Component(connection_pool, "Connection Pool Component", "Component", "Scalable network connection management")
+    Component(batch_processor, "Batch Processor Component", "Component", "Scalable batch processing")
+    Component(cache_component, "Cache Component", "Component", "Scalable cache management")
+    Component(network_buffer, "Network Buffer Component", "Component", "Scalable network buffer management")
+    Component(scalable_interface, "Scalable Component Interface", "Interface", "Common interface for all scalable components")
+}
+
+Container_Boundary(shared, "Shared Components") {
+    Component(performance_monitor, "Performance Monitor", "Interface", "Unified performance monitoring")
+    Component(structured_logger, "Structured Logger", "Component", "Centralized logging with context")
+    Component(alert_notifiers, "Alert Notifiers", "Component", "Multiple notification channels")
+    Component(prometheus_registry, "Prometheus Registry", "Component", "Metrics export to Prometheus")
+}
+
+' Resource Monitor relationships
+Rel(resource_api, resource_collector, "Uses")
+Rel(resource_collector, resource_history, "Stores data")
+Rel(resource_history, predictive_analyzer, "Provides historical data")
+Rel(predictive_analyzer, alert_system, "Triggers predictions")
+Rel(alert_system, alert_notifiers, "Sends alerts")
+
+' Graceful Degradation relationships
+Rel(degradation_api, degradation_manager, "Uses")
+Rel(degradation_manager, degradation_rules, "Evaluates rules")
+Rel(degradation_rules, degradation_actions, "Triggers actions")
+Rel(degradation_actions, scalable_interface, "Applies degradation")
+Rel(recovery_manager, degradation_actions, "Reverses actions")
+
+' Auto Scaler relationships
+Rel(scaling_api, scaling_engine, "Uses")
+Rel(scaling_engine, scaling_rules, "Evaluates rules")
+Rel(scaling_engine, component_registry, "Manages components")
+Rel(component_registry, scalable_interface, "Registers components")
+Rel(isolation_manager, scalable_interface, "Isolates components")
+Rel(scaling_engine, scaling_history, "Records events")
+
+' Scalable Components relationships
+Rel(scalable_interface, worker_pool, "Implements")
+Rel(scalable_interface, connection_pool, "Implements")
+Rel(scalable_interface, batch_processor, "Implements")
+Rel(scalable_interface, cache_component, "Implements")
+Rel(scalable_interface, network_buffer, "Implements")
+
+' Cross-container relationships
+Rel(resource_api, performance_monitor, "Provides metrics")
+Rel(degradation_manager, performance_monitor, "Monitors performance")
+Rel(scaling_engine, performance_monitor, "Uses metrics")
+Rel(performance_monitor, prometheus_registry, "Exports metrics")
+
+' Shared logging
+Rel(resource_collector, structured_logger, "Logs events")
+Rel(degradation_manager, structured_logger, "Logs degradation")
+Rel(scaling_engine, structured_logger, "Logs scaling")
+
+@enduml

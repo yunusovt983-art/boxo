@@ -1,0 +1,16 @@
+{
+  "test_timeout": "30m",
+  "benchmark_timeout": "10m",
+  "stability_duration": "30m",
+  "max_p95_latency": "100ms",
+  "min_success_rate": 0.95,
+  "max_memory_growth": 0.05,
+  "min_throughput": 1000,
+  "max_concurrent_connections": 10000,
+  "max_request_rate": 100000,
+  "enable_long_running": false,
+  "enable_stress_tests": true,
+  "enable_benchmarks": true,
+  "output_dir": "test_results",
+  "generate_reports": true
+}

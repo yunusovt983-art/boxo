@@ -1,0 +1,104 @@
+@startuml Task2_Level3_Component
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Task 2: Bitswap Adaptive Optimization - Component Level
+
+Container(client, "Bitswap Client", "Go", "Main bitswap client")
+Container(server, "Bitswap Server", "Go", "Main bitswap server")
+
+Container_Boundary(adaptive_layer, "Adaptive Optimization Layer") {
+    
+    ' Task 2.1 Components - Adaptive Connection Management
+    Component_Boundary(task21, "Task 2.1: Adaptive Connection Management") {
+        Component(adaptive_config, "AdaptiveBitswapConfig", "Go Struct", "Dynamic configuration with auto-scaling parameters")
+        Component(connection_manager, "AdaptiveConnectionManager", "Go Service", "Manages peer connections with adaptive limits")
+        Component(connection_info, "ConnectionInfo", "Go Struct", "Tracks per-peer connection metrics")
+    }
+    
+    ' Task 2.2 Components - Request Prioritization  
+    Component_Boundary(task22, "Task 2.2: Request Prioritization System") {
+        Component(load_monitor, "LoadMonitor", "Go Service", "Monitors system performance and load metrics")
+        Component(request_tracker, "RequestTracker", "Go Service", "Tracks individual request performance")
+        Component(priority_queues, "Priority Queues", "Go Channels", "Separate queues for each priority level")
+    }
+    
+    ' Task 2.3 Components - Batch Processing
+    Component_Boundary(task23, "Task 2.3: Batch Processing System") {
+        Component(batch_processor, "BatchRequestProcessor", "Go Service", "Groups requests into batches for processing")
+        Component(batch_request, "BatchRequest", "Go Struct", "Individual request with priority and metadata")
+        Component(worker_pool, "WorkerPool", "Go Service", "Manages parallel worker goroutines")
+        Component(batch_worker_pool, "BatchWorkerPool", "Go Service", "Simplified worker pool for batch processing")
+        Component(priority_workers, "Priority Workers", "Go Goroutines", "Separate worker pools per priority")
+    }
+    
+    ' Metrics and Monitoring
+    Component_Boundary(metrics, "Metrics & Monitoring") {
+        Component(batch_metrics, "BatchProcessorMetrics", "Go Struct", "Batch processing performance metrics")
+        Component(worker_stats, "WorkerPoolStats", "Go Struct", "Worker pool performance statistics")
+        Component(load_metrics, "LoadMetrics", "Go Struct", "System load and performance metrics")
+    }
+}
+
+ContainerDb(blockstore, "Blockstore", "Storage", "Block storage")
+System_Ext(network, "IPFS Network", "P2P Network")
+
+' Client/Server to Adaptive Layer
+Rel(client, adaptive_config, "Gets configuration", "Function calls")
+Rel(client, connection_manager, "Manages connections", "Function calls")
+Rel(client, batch_processor, "Submits requests", "Channels")
+
+Rel(server, adaptive_config, "Gets configuration", "Function calls")
+Rel(server, connection_manager, "Reports activity", "Function calls")
+
+' Task 2.1 Internal Relationships
+Rel(connection_manager, adaptive_config, "Updates configuration", "Function calls")
+Rel(connection_manager, connection_info, "Tracks peer info", "Data structures")
+Rel(adaptive_config, load_monitor, "Receives metrics", "Function calls")
+
+' Task 2.2 Internal Relationships  
+Rel(load_monitor, request_tracker, "Tracks requests", "Function calls")
+Rel(load_monitor, load_metrics, "Updates metrics", "Data structures")
+Rel(batch_processor, priority_queues, "Routes by priority", "Channels")
+
+' Task 2.3 Internal Relationships
+Rel(batch_processor, batch_request, "Creates requests", "Data structures")
+Rel(batch_processor, priority_workers, "Distributes work", "Channels")
+Rel(priority_workers, worker_pool, "Uses worker pools", "Function calls")
+Rel(worker_pool, batch_worker_pool, "Delegates tasks", "Function calls")
+
+' Metrics Relationships
+Rel(batch_processor, batch_metrics, "Updates metrics", "Data structures")
+Rel(worker_pool, worker_stats, "Reports statistics", "Data structures")
+Rel(load_monitor, adaptive_config, "Triggers adaptation", "Function calls")
+
+' External Relationships
+Rel(connection_manager, network, "Manages P2P connections", "libp2p")
+Rel(batch_processor, blockstore, "Retrieves blocks", "Blockstore API")
+
+note right of task21
+**Adaptive Configuration:**
+- MaxOutstandingBytesPerPeer: 256KB-100MB
+- Worker count: 128-2048
+- Adaptation interval: 30s
+- Load thresholds: 0.3-0.8
+end note
+
+note right of task22  
+**Priority System:**
+- Critical: <10ms threshold
+- High: <50ms threshold  
+- Normal: Standard processing
+- Low: Background processing
+- P95 response time tracking
+end note
+
+note right of task23
+**Batch Processing:**
+- Batch sizes: 50-1000 requests
+- Timeout: 1-100ms
+- 471k ops/sec throughput
+- Priority-based worker allocation
+- Panic recovery & auto-scaling
+end note
+
+@enduml

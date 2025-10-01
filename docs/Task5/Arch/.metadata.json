@@ -1,0 +1,211 @@
+{
+  "project": {
+    "name": "Boxo High Load Optimization - Task 5",
+    "description": "Система мониторинга и метрик производительности",
+    "version": "1.0.0",
+    "created": "2024-12-19",
+    "author": "Kiro AI Assistant",
+    "license": "MIT"
+  },
+  "architecture": {
+    "framework": "C4 Model",
+    "tool": "PlantUML",
+    "levels": [
+      {
+        "level": 1,
+        "name": "Context",
+        "file": "context-diagram.puml",
+        "description": "Система в контексте пользователей и внешних систем"
+      },
+      {
+        "level": 2,
+        "name": "Container",
+        "file": "container-diagram.puml",
+        "description": "Высокоуровневая архитектура системы"
+      },
+      {
+        "level": 3,
+        "name": "Component",
+        "file": "component-diagram.puml",
+        "description": "Внутренняя структура контейнеров"
+      },
+      {
+        "level": 4,
+        "name": "Code",
+        "file": "code-diagram.puml",
+        "description": "Ключевые интерфейсы и классы"
+      }
+    ],
+    "additional_diagrams": [
+      {
+        "type": "Sequence",
+        "file": "sequence-diagram.puml",
+        "description": "Взаимодействие компонентов во времени"
+      },
+      {
+        "type": "Deployment",
+        "file": "deployment-diagram.puml",
+        "description": "Физическая архитектура и инфраструктура"
+      },
+      {
+        "type": "State",
+        "file": "state-diagram.puml",
+        "description": "Жизненный цикл Auto Tuner"
+      },
+      {
+        "type": "Class",
+        "file": "class-diagram.puml",
+        "description": "Структуры данных и их взаимосвязи"
+      }
+    ]
+  },
+  "components": {
+    "performance_monitor": {
+      "name": "Performance Monitor",
+      "description": "Сборщик метрик производительности",
+      "responsibilities": [
+        "Сбор метрик из Bitswap, Blockstore, Network",
+        "Агрегация и кэширование метрик",
+        "Экспорт метрик в Prometheus"
+      ],
+      "interfaces": [
+        "PerformanceMonitor",
+        "MetricsCollector",
+        "PrometheusExporter"
+      ]
+    },
+    "bottleneck_analyzer": {
+      "name": "Bottleneck Analyzer",
+      "description": "Анализатор узких мест",
+      "responsibilities": [
+        "Анализ трендов в метриках",
+        "Обнаружение аномалий",
+        "Генерация рекомендаций по оптимизации"
+      ],
+      "interfaces": [
+        "BottleneckAnalyzer",
+        "TrendAnalyzer",
+        "AnomalyDetector",
+        "RecommendationEngine"
+      ]
+    },
+    "alert_manager": {
+      "name": "Alert Manager",
+      "description": "Система алертов и уведомлений",
+      "responsibilities": [
+        "Генерация алертов по правилам",
+        "Отправка уведомлений",
+        "Структурированное логирование",
+        "Трассировка запросов"
+      ],
+      "interfaces": [
+        "AlertManager",
+        "AlertGenerator",
+        "NotificationSender"
+      ]
+    },
+    "auto_tuner": {
+      "name": "Auto Tuner",
+      "description": "Автоматический тюнер параметров",
+      "responsibilities": [
+        "ML предсказание оптимальных параметров",
+        "Оптимизация конфигурации",
+        "Безопасное применение изменений",
+        "Автоматический откат при проблемах"
+      ],
+      "interfaces": [
+        "AutoTuner",
+        "MLPredictor",
+        "ConfigOptimizer",
+        "SafeApplier"
+      ]
+    }
+  },
+  "metrics": {
+    "performance_targets": {
+      "metrics_collection_time": "< 1 second",
+      "alert_generation_latency": "< 30 seconds",
+      "anomaly_detection_accuracy": "> 95%",
+      "optimization_application_time": "< 5 minutes"
+    },
+    "optimization_effectiveness": {
+      "successful_optimizations": "> 80%",
+      "average_performance_improvement": "> 10%",
+      "rollback_detection_time": "< 2 minutes",
+      "false_positive_rate": "< 5%"
+    }
+  },
+  "external_integrations": [
+    {
+      "name": "Prometheus",
+      "type": "Metrics Storage",
+      "protocol": "HTTP",
+      "format": "Prometheus exposition format"
+    },
+    {
+      "name": "Grafana",
+      "type": "Visualization",
+      "protocol": "HTTP",
+      "format": "JSON API"
+    },
+    {
+      "name": "Slack",
+      "type": "Notifications",
+      "protocol": "HTTPS",
+      "format": "Webhook"
+    },
+    {
+      "name": "Email",
+      "type": "Notifications",
+      "protocol": "SMTP",
+      "format": "HTML/Text"
+    },
+    {
+      "name": "PagerDuty",
+      "type": "Incident Management",
+      "protocol": "HTTPS",
+      "format": "REST API"
+    }
+  ],
+  "deployment": {
+    "environments": [
+      "Development",
+      "Staging", 
+      "Production"
+    ],
+    "platforms": [
+      "Kubernetes",
+      "Docker Swarm",
+      "Bare Metal"
+    ],
+    "scaling": {
+      "horizontal": true,
+      "vertical": true,
+      "auto_scaling": true
+    }
+  },
+  "quality_attributes": {
+    "scalability": {
+      "description": "Горизонтальное масштабирование компонентов",
+      "patterns": ["Load Balancing", "Distributed Processing", "Caching"]
+    },
+    "reliability": {
+      "description": "Отказоустойчивость и восстановление",
+      "patterns": ["Circuit Breaker", "Retry", "Graceful Degradation"]
+    },
+    "performance": {
+      "description": "Высокая производительность обработки",
+      "patterns": ["Asynchronous Processing", "Batching", "Caching"]
+    },
+    "security": {
+      "description": "Безопасное применение изменений",
+      "patterns": ["Safe Deployment", "Rollback", "Audit Logging"]
+    }
+  },
+  "tools": {
+    "diagram_generation": "PlantUML",
+    "documentation": "Markdown",
+    "build_automation": "Makefile",
+    "web_interface": "HTML/CSS/JavaScript"
+  }
+}

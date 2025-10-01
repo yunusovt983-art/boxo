@@ -1,0 +1,99 @@
+@startuml task8.2-components
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Component Diagram for Task 8.2 - Integration Examples
+
+Container_Boundary(task8_2, "Task 8.2 - Integration Examples") {
+    
+    Component_Boundary(cdn_application, "CDN Service Application") {
+        Component(cdn_config, "CDN Configuration", "Go Struct", "Optimized Boxo parameters for CDN scenario")
+        Component(cdn_service, "CDN Service Core", "Go", "High-performance content delivery logic")
+        Component(cluster_integration, "Cluster Integration", "Go", "IPFS-cluster API client and management")
+        Component(cache_manager, "Cache Manager", "Go", "LRU cache with compression and prefetching")
+        Component(metrics_collector, "Metrics Collector", "Go", "Prometheus metrics for performance monitoring")
+        Component(health_endpoint, "Health Endpoint", "Go HTTP", "Service health checks and diagnostics")
+    }
+    
+    Component_Boundary(docker_deployment, "Docker Compose Deployment") {
+        Component(compose_main, "Main Compose File", "YAML", "8-service deployment orchestration")
+        Component(ipfs_nodes, "IPFS Node Configs", "YAML", "3-node IPFS cluster configuration")
+        Component(cluster_configs, "Cluster Configs", "JSON", "IPFS-cluster service configurations")
+        Component(monitoring_stack, "Monitoring Stack", "YAML", "Prometheus + Grafana deployment")
+        Component(env_template, "Environment Template", "ENV", "Configurable deployment parameters")
+        Component(network_config, "Network Configuration", "YAML", "Inter-service communication setup")
+    }
+    
+    Component_Boundary(benchmarking_system, "Benchmarking System") {
+        Component(benchmark_runner, "Benchmark Runner", "Bash", "Main benchmarking orchestration script")
+        Component(load_generators, "Load Generators", "Lua + wrk", "HTTP load generation with custom scenarios")
+        Component(metrics_collectors, "Metrics Collectors", "Bash", "Prometheus, Docker, and system metrics")
+        Component(test_scenarios, "Test Scenarios", "Bash Functions", "Baseline, High Concurrency, High Throughput tests")
+        Component(report_generator, "Report Generator", "Bash + HTML", "Automated performance report creation")
+        Component(validation_engine, "Validation Engine", "Bash", "Performance requirement validation")
+    }
+    
+    Component_Boundary(monitoring_dashboard, "Monitoring Dashboard") {
+        Component(performance_panels, "Performance Panels", "JSON", "Request rate, response time, throughput metrics")
+        Component(bitswap_panels, "Bitswap Panels", "JSON", "Block exchange and peer metrics")
+        Component(cluster_panels, "Cluster Health Panels", "JSON", "Peer status and consensus metrics")
+        Component(system_panels, "System Resource Panels", "JSON", "CPU, memory, disk, network metrics")
+        Component(alert_rules, "Alert Rules", "JSON", "Threshold-based alerting configuration")
+        Component(auto_provisioning, "Auto Provisioning", "YAML", "Automatic dashboard and datasource setup")
+    }
+}
+
+System_Ext(ipfs_cluster, "IPFS-Cluster", "Distributed content storage")
+System_Ext(prometheus, "Prometheus", "Metrics collection and storage")
+System_Ext(grafana, "Grafana", "Dashboard and alerting platform")
+System_Ext(docker_engine, "Docker Engine", "Container runtime")
+System_Ext(boxo_lib, "Boxo Library", "IPFS implementation with optimizations")
+
+' CDN Application internal relationships
+Rel(cdn_service, cdn_config, "Uses configuration")
+Rel(cdn_service, cluster_integration, "Manages content via")
+Rel(cdn_service, cache_manager, "Caches content with")
+Rel(cdn_service, metrics_collector, "Reports metrics to")
+Rel(health_endpoint, cdn_service, "Monitors health of")
+Rel(cluster_integration, cache_manager, "Coordinates with")
+
+' Docker Deployment internal relationships
+Rel(compose_main, ipfs_nodes, "Orchestrates")
+Rel(compose_main, cluster_configs, "Applies")
+Rel(compose_main, monitoring_stack, "Deploys")
+Rel(compose_main, network_config, "Configures")
+Rel(env_template, compose_main, "Parameterizes")
+Rel(cluster_configs, ipfs_nodes, "Configures")
+
+' Benchmarking System internal relationships
+Rel(benchmark_runner, test_scenarios, "Executes")
+Rel(test_scenarios, load_generators, "Uses")
+Rel(benchmark_runner, metrics_collectors, "Collects via")
+Rel(benchmark_runner, report_generator, "Generates reports with")
+Rel(validation_engine, metrics_collectors, "Validates metrics from")
+Rel(report_generator, validation_engine, "Includes validation from")
+
+' Monitoring Dashboard internal relationships
+Rel(performance_panels, bitswap_panels, "Complements")
+Rel(cluster_panels, system_panels, "Correlates with")
+Rel(alert_rules, performance_panels, "Monitors")
+Rel(auto_provisioning, performance_panels, "Provisions")
+Rel(auto_provisioning, alert_rules, "Configures")
+
+' Cross-component relationships
+Rel(compose_main, cdn_application, "Deploys")
+Rel(benchmark_runner, cdn_application, "Tests performance of")
+Rel(monitoring_dashboard, cdn_application, "Monitors")
+Rel(auto_provisioning, monitoring_stack, "Configures")
+
+' External system relationships
+Rel(cluster_integration, ipfs_cluster, "Integrates with", "HTTP API")
+Rel(metrics_collector, prometheus, "Exports metrics to")
+Rel(monitoring_stack, prometheus, "Deploys")
+Rel(monitoring_stack, grafana, "Deploys")
+Rel(compose_main, docker_engine, "Runs on")
+Rel(cdn_service, boxo_lib, "Uses optimizations from")
+Rel(metrics_collectors, prometheus, "Queries metrics from")
+Rel(performance_panels, grafana, "Displays in")
+
+SHOW_LEGEND()
+@enduml

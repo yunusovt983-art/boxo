@@ -1,0 +1,113 @@
+@startuml Task6-Sequence-Diagram
+title Task 6 - Resource Management Flow - Sequence Diagram
+
+actor "System Administrator" as Admin
+participant "Resource Monitor" as RM
+participant "Performance Monitor" as PM
+participant "Graceful Degradation" as GD
+participant "Auto Scaler" as AS
+participant "Scalable Components" as SC
+participant "Alert System" as Alert
+participant "Prometheus" as Prom
+
+== Initialization Phase ==
+Admin -> RM: Configure thresholds
+Admin -> GD: Set degradation rules
+Admin -> AS: Configure scaling rules
+
+RM -> PM: Register resource collector
+GD -> PM: Register degradation monitor
+AS -> PM: Register scaling monitor
+
+AS -> SC: Register scalable components
+Note right of SC: WorkerPool, ConnectionPool,\nBatchProcessor, Cache, NetworkBuffer
+
+== Normal Operation ==
+loop Every monitoring interval
+    PM -> RM: Collect system metrics
+    RM -> RM: Store in history
+    RM -> RM: Analyze trends
+    
+    alt CPU usage > warning threshold
+        RM -> Alert: Send warning alert
+        Alert -> Prom: Export alert metric
+    end
+    
+    PM -> GD: Provide performance metrics
+    GD -> GD: Evaluate degradation rules
+    
+    PM -> AS: Provide performance metrics
+    AS -> AS: Evaluate scaling rules
+end
+
+== High Load Scenario ==
+PM -> RM: Collect metrics (CPU: 85%, Memory: 90%)
+RM -> Alert: Send critical alert
+Alert -> Admin: Notify high resource usage
+
+PM -> GD: Performance metrics
+GD -> GD: Evaluate: CPU > 80% → Light degradation
+GD -> SC: Reduce worker threads (128 → 102)
+GD -> SC: Increase batch timeout (10ms → 20ms)
+GD -> Alert: Log degradation level change
+
+PM -> AS: Performance metrics
+AS -> AS: Evaluate: CPU > 70% → Scale up workers
+AS -> AS: Check cooldown period
+AS -> SC: Scale worker pool (102 → 153)
+AS -> Alert: Log scaling event
+
+== Memory Pressure Scenario ==
+PM -> RM: Collect metrics (Memory: 95%)
+RM -> Alert: Send critical memory alert
+
+PM -> GD: Performance metrics
+GD -> GD: Evaluate: Memory > 95% → Critical degradation
+GD -> SC: Emergency cache clear
+GD -> SC: Disable non-essential services
+GD -> SC: Reduce connection limits
+GD -> Alert: Log critical degradation
+
+== Component Failure Scenario ==
+SC -> AS: Component health check failed
+AS -> AS: Evaluate component health
+AS -> AS: Isolate problematic component
+AS -> SC: Scale component to minimum
+AS -> Alert: Log component isolation
+
+Note right of AS: Component isolated for 5 minutes\nwith auto-restore enabled
+
+== Recovery Phase ==
+PM -> RM: Collect metrics (CPU: 45%, Memory: 60%)
+RM -> Alert: Resource usage normalized
+
+PM -> GD: Performance metrics
+GD -> GD: Evaluate: Metrics stable for 60s
+GD -> GD: Initiate recovery
+GD -> SC: Restore worker threads (102 → 128)
+GD -> SC: Restore batch timeout (20ms → 10ms)
+GD -> Alert: Log recovery completion
+
+AS -> AS: Check isolated components
+AS -> AS: Auto-restore timeout reached
+AS -> SC: Restore component scale
+AS -> Alert: Log component restoration
+
+== Monitoring and Reporting ==
+loop Continuous
+    RM -> Prom: Export resource metrics
+    GD -> Prom: Export degradation metrics
+    AS -> Prom: Export scaling metrics
+    SC -> Prom: Export component metrics
+end
+
+Admin -> RM: Get resource history
+RM -> Admin: Historical data with trends
+
+Admin -> GD: Get degradation status
+GD -> Admin: Current level and active actions
+
+Admin -> AS: Get scaling status
+AS -> Admin: Component scales and history
+
+@enduml

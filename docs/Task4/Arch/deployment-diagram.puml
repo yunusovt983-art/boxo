@@ -1,0 +1,92 @@
+@startuml Task4-Deployment-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+
+title Task 4: Диаграмма развертывания - IPFS кластер с сетевой оптимизацией
+
+Deployment_Node(cluster, "IPFS Кластер", "Kubernetes/Docker Swarm") {
+    
+    Deployment_Node(node1, "Узел кластера 1", "Linux VM, 8 CPU, 32GB RAM") {
+        Container(boxo1, "Boxo с оптимизацией", "Go application", "Адаптивное управление соединениями")
+        Container(ipfs1, "IPFS Daemon", "Go application", "Основной IPFS узел")
+        Container(monitor1, "Node Exporter", "Prometheus exporter", "Системные метрики")
+    }
+    
+    Deployment_Node(node2, "Узел кластера 2", "Linux VM, 8 CPU, 32GB RAM") {
+        Container(boxo2, "Boxo с оптимизацией", "Go application", "Адаптивное управление соединениями")
+        Container(ipfs2, "IPFS Daemon", "Go application", "Основной IPFS узел")
+        Container(monitor2, "Node Exporter", "Prometheus exporter", "Системные метрики")
+    }
+    
+    Deployment_Node(node3, "Узел кластера 3", "Linux VM, 8 CPU, 32GB RAM") {
+        Container(boxo3, "Boxo с оптимизацией", "Go application", "Адаптивное управление соединениями")
+        Container(ipfs3, "IPFS Daemon", "Go application", "Основной IPFS узел")
+        Container(monitor3, "Node Exporter", "Prometheus exporter", "Системные метрики")
+    }
+}
+
+Deployment_Node(monitoring, "Мониторинг", "Отдельный сервер") {
+    Container(prometheus, "Prometheus", "Time-series DB", "Сбор и хранение метрик")
+    Container(grafana, "Grafana", "Visualization", "Дашборды и алерты")
+    Container(alertmanager, "AlertManager", "Alert routing", "Управление уведомлениями")
+}
+
+Deployment_Node(loadbalancer, "Балансировщик нагрузки", "HAProxy/Nginx") {
+    Container(lb, "Load Balancer", "HAProxy", "Распределение HTTP запросов")
+}
+
+Deployment_Node(external, "Внешняя IPFS сеть", "Internet") {
+    System_Ext(ipfs_nodes, "IPFS узлы", "Внешние узлы IPFS сети")
+}
+
+' Сетевые соединения
+Rel(boxo1, boxo2, "Кластерные соединения", "libp2p, постоянные")
+Rel(boxo1, boxo3, "Кластерные соединения", "libp2p, постоянные")
+Rel(boxo2, boxo3, "Кластерные соединения", "libp2p, постоянные")
+
+Rel(boxo1, ipfs_nodes, "P2P соединения", "libp2p/Bitswap")
+Rel(boxo2, ipfs_nodes, "P2P соединения", "libp2p/Bitswap")
+Rel(boxo3, ipfs_nodes, "P2P соединения", "libp2p/Bitswap")
+
+Rel(lb, boxo1, "HTTP API", "HTTP/REST")
+Rel(lb, boxo2, "HTTP API", "HTTP/REST")
+Rel(lb, boxo3, "HTTP API", "HTTP/REST")
+
+' Мониторинг
+Rel(monitor1, prometheus, "Системные метрики", "HTTP/9100")
+Rel(monitor2, prometheus, "Системные метрики", "HTTP/9100")
+Rel(monitor3, prometheus, "Системные метрики", "HTTP/9100")
+
+Rel(boxo1, prometheus, "Метрики приложения", "HTTP/8080/metrics")
+Rel(boxo2, prometheus, "Метрики приложения", "HTTP/8080/metrics")
+Rel(boxo3, prometheus, "Метрики приложения", "HTTP/8080/metrics")
+
+Rel(prometheus, grafana, "Данные метрик", "PromQL")
+Rel(prometheus, alertmanager, "Алерты", "HTTP")
+
+note right of cluster
+  **Конфигурация кластера:**
+  • 3 узла для отказоустойчивости
+  • Постоянные соединения между узлами
+  • Автоматическое переподключение
+  • Балансировка нагрузки
+end note
+
+note right of boxo1
+  **Оптимизации Task 4:**
+  • Адаптивные лимиты соединений
+  • Мониторинг качества соединений
+  • Интеллектуальная буферизация
+  • Обнаружение медленных соединений
+  • Keep-alive управление
+end note
+
+note right of monitoring
+  **Метрики производительности:**
+  • Количество соединений
+  • Качество соединений (латентность, ПС)
+  • Размеры буферов
+  • Keep-alive статистика
+  • Обнаруженные медленные соединения
+end note
+
+@enduml

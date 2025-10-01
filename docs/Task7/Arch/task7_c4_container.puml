@@ -1,0 +1,98 @@
+@startuml Task7_Container_Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Task 7: Интеграция и тестирование производительности - Container Diagram
+
+Person(developer, "Разработчик")
+Person(devops, "DevOps инженер")
+
+System_Boundary(task7_system, "Task 7: Система тестирования производительности") {
+    
+    Container_Boundary(load_testing_boundary, "7.1 Нагрузочное тестирование Bitswap") {
+        Container(load_test_engine, "Load Test Engine", "Go", "Ядро системы нагрузочного тестирования")
+        Container(concurrent_tests, "Concurrent Connection Tests", "Go", "Тесты 10,000+ одновременных соединений")
+        Container(throughput_tests, "Throughput Tests", "Go", "Тесты 100,000+ запросов в секунду")
+        Container(stability_tests, "Stability Tests", "Go", "Тесты стабильности 24+ часа")
+        Container(benchmark_suite, "Benchmark Suite", "Go", "Автоматизированные бенчмарки производительности")
+        Container(test_runner, "Test Runner", "Go", "Оркестратор выполнения тестов")
+        Container(makefile_automation, "Makefile Automation", "Make", "Автоматизация запуска тестов")
+    }
+    
+    Container_Boundary(integration_testing_boundary, "7.2 Интеграционное тестирование кластера") {
+        Container(cluster_tests, "Cluster Integration Tests", "Go", "Тесты взаимодействия узлов кластера")
+        Container(metrics_validation, "Metrics Validation", "Go", "Валидация метрик и алертов")
+        Container(cluster_fault_tests, "Cluster Fault Tests", "Go", "Тесты отказоустойчивости кластера")
+        Container(ci_integration, "CI/CD Integration", "GitHub Actions", "Автоматизация в pipeline")
+    }
+    
+    Container_Boundary(fault_tolerance_boundary, "7.3 Тестирование отказоустойчивости") {
+        Container(network_failure_sim, "Network Failure Simulator", "Go", "Симуляция сбоев сети")
+        Container(node_failure_sim, "Node Failure Simulator", "Go", "Симуляция сбоев узлов")
+        Container(recovery_tests, "Recovery Tests", "Go", "Тесты восстановления после сбоев")
+        Container(circuit_breaker_tests, "Circuit Breaker Tests", "Go", "Валидация circuit breaker логики")
+        Container(chaos_engineering, "Chaos Engineering", "Go", "Chaos engineering тесты")
+    }
+    
+    Container_Boundary(shared_components, "Общие компоненты") {
+        Container(performance_monitor, "Performance Monitor", "Go", "Мониторинг производительности в реальном времени")
+        Container(resource_monitor, "Resource Monitor", "Go", "Мониторинг системных ресурсов")
+        Container(result_collector, "Result Collector", "Go", "Сбор и агрегация результатов тестов")
+        Container(report_generator, "Report Generator", "Go", "Генерация отчетов и визуализация")
+        Container(test_data_generator, "Test Data Generator", "Go", "Генерация тестовых данных и блоков")
+    }
+}
+
+System_Ext(bitswap_system, "Bitswap System", "Тестируемая система")
+System_Ext(ipfs_cluster, "IPFS Cluster", "Кластерная среда")
+System_Ext(prometheus, "Prometheus", "Система метрик")
+System_Ext(grafana, "Grafana", "Визуализация метрик")
+System_Ext(github_actions, "GitHub Actions", "CI/CD система")
+
+' Взаимодействие пользователей
+Rel(developer, makefile_automation, "Запускает тесты", "make test-*")
+Rel(developer, test_runner, "Выполняет тесты", "CLI")
+Rel(devops, ci_integration, "Настраивает автоматизацию", "YAML config")
+Rel(devops, report_generator, "Анализирует отчеты", "HTML/JSON")
+
+' Взаимодействие внутри Load Testing
+Rel(makefile_automation, test_runner, "Запускает", "CLI commands")
+Rel(test_runner, load_test_engine, "Управляет", "API calls")
+Rel(load_test_engine, concurrent_tests, "Выполняет", "Test execution")
+Rel(load_test_engine, throughput_tests, "Выполняет", "Test execution")
+Rel(load_test_engine, stability_tests, "Выполняет", "Test execution")
+Rel(load_test_engine, benchmark_suite, "Выполняет", "Benchmark runs")
+
+' Взаимодействие внутри Integration Testing
+Rel(ci_integration, cluster_tests, "Запускает", "Automated runs")
+Rel(cluster_tests, metrics_validation, "Использует", "Metric checks")
+Rel(cluster_tests, cluster_fault_tests, "Включает", "Fault scenarios")
+
+' Взаимодействие внутри Fault Tolerance
+Rel(chaos_engineering, network_failure_sim, "Использует", "Network chaos")
+Rel(chaos_engineering, node_failure_sim, "Использует", "Node chaos")
+Rel(recovery_tests, circuit_breaker_tests, "Включает", "CB validation")
+
+' Взаимодействие с общими компонентами
+Rel(load_test_engine, performance_monitor, "Собирает метрики", "Performance data")
+Rel(load_test_engine, resource_monitor, "Мониторит ресурсы", "System metrics")
+Rel(load_test_engine, result_collector, "Отправляет результаты", "Test results")
+Rel(cluster_tests, performance_monitor, "Использует", "Cluster metrics")
+Rel(chaos_engineering, resource_monitor, "Мониторит", "Resource usage")
+
+Rel(result_collector, report_generator, "Передает данные", "Aggregated results")
+Rel(test_data_generator, load_test_engine, "Предоставляет данные", "Test blocks")
+Rel(test_data_generator, cluster_tests, "Генерирует данные", "Cluster data")
+
+' Взаимодействие с внешними системами
+Rel(concurrent_tests, bitswap_system, "Тестирует", "10K+ connections")
+Rel(throughput_tests, bitswap_system, "Нагружает", "100K+ RPS")
+Rel(stability_tests, bitswap_system, "Длительно тестирует", "24h+ runs")
+Rel(cluster_tests, ipfs_cluster, "Тестирует кластер", "Inter-node comm")
+Rel(network_failure_sim, ipfs_cluster, "Симулирует сбои", "Network failures")
+
+Rel(performance_monitor, prometheus, "Экспортирует метрики", "Prometheus format")
+Rel(result_collector, prometheus, "Отправляет результаты", "Custom metrics")
+Rel(report_generator, grafana, "Создает дашборды", "Dashboard JSON")
+Rel(ci_integration, github_actions, "Интегрируется", "Workflow YAML")
+
+@enduml

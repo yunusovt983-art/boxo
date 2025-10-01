@@ -1,0 +1,119 @@
+@startuml Task7_Deployment_Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+
+title Task 7: Развертывание системы тестирования производительности
+
+Deployment_Node(developer_machine, "Developer Machine", "Local Development") {
+    Deployment_Node(local_env, "Local Environment", "Docker Desktop") {
+        Container(local_load_tests, "Load Tests", "Go", "Локальные нагрузочные тесты")
+        Container(local_integration_tests, "Integration Tests", "Go", "Локальные интеграционные тесты")
+        Container(local_makefile, "Makefile Runner", "Make", "Локальная автоматизация")
+    }
+}
+
+Deployment_Node(ci_cd_infrastructure, "CI/CD Infrastructure", "GitHub Actions") {
+    Deployment_Node(github_runners, "GitHub Runners", "Ubuntu 22.04") {
+        Container(ci_load_tests, "CI Load Tests", "Go", "Автоматизированные нагрузочные тесты")
+        Container(ci_integration_tests, "CI Integration Tests", "Go", "Автоматизированные интеграционные тесты")
+        Container(ci_fault_tests, "CI Fault Tests", "Go", "Автоматизированные тесты отказоустойчивости")
+        Container(test_artifacts, "Test Artifacts", "Files", "Результаты тестов и отчеты")
+    }
+}
+
+Deployment_Node(test_cluster, "Test Cluster", "Kubernetes") {
+    Deployment_Node(control_plane, "Control Plane", "K8s Master") {
+        Container(test_orchestrator, "Test Orchestrator", "Go", "Оркестратор кластерных тестов")
+        Container(metrics_collector, "Metrics Collector", "Prometheus", "Сбор метрик тестирования")
+    }
+    
+    Deployment_Node(worker_node_1, "Worker Node 1", "K8s Node") {
+        Container(ipfs_node_1, "IPFS Node 1", "Go-IPFS", "Тестовый узел IPFS")
+        Container(bitswap_instance_1, "Bitswap Instance 1", "Go", "Экземпляр Bitswap для тестирования")
+        Container(load_generator_1, "Load Generator 1", "Go", "Генератор нагрузки")
+    }
+    
+    Deployment_Node(worker_node_2, "Worker Node 2", "K8s Node") {
+        Container(ipfs_node_2, "IPFS Node 2", "Go-IPFS", "Тестовый узел IPFS")
+        Container(bitswap_instance_2, "Bitswap Instance 2", "Go", "Экземпляр Bitswap для тестирования")
+        Container(load_generator_2, "Load Generator 2", "Go", "Генератор нагрузки")
+    }
+    
+    Deployment_Node(worker_node_n, "Worker Node N", "K8s Node") {
+        Container(ipfs_node_n, "IPFS Node N", "Go-IPFS", "Тестовый узел IPFS")
+        Container(bitswap_instance_n, "Bitswap Instance N", "Go", "Экземпляр Bitswap для тестирования")
+        Container(chaos_agent, "Chaos Agent", "Go", "Агент chaos engineering")
+    }
+}
+
+Deployment_Node(monitoring_infrastructure, "Monitoring Infrastructure", "Cloud") {
+    Deployment_Node(monitoring_cluster, "Monitoring Cluster", "Kubernetes") {
+        Container(prometheus, "Prometheus", "Prometheus", "Система метрик")
+        Container(grafana, "Grafana", "Grafana", "Визуализация метрик")
+        Container(alertmanager, "AlertManager", "AlertManager", "Управление алертами")
+    }
+    
+    Deployment_Node(storage_cluster, "Storage Cluster", "Persistent Storage") {
+        ContainerDb(metrics_db, "Metrics Database", "TimeSeries DB", "Хранение метрик")
+        ContainerDb(test_results_db, "Test Results DB", "PostgreSQL", "Результаты тестов")
+        ContainerDb(artifacts_storage, "Artifacts Storage", "S3", "Артефакты тестирования")
+    }
+}
+
+Deployment_Node(load_testing_infrastructure, "Load Testing Infrastructure", "High-Performance Cluster") {
+    Deployment_Node(load_test_cluster, "Load Test Cluster", "Bare Metal") {
+        Container(extreme_load_generator, "Extreme Load Generator", "Go", "Генератор экстремальной нагрузки")
+        Container(concurrent_conn_tester, "Concurrent Connection Tester", "Go", "Тестер 10K+ соединений")
+        Container(throughput_tester, "Throughput Tester", "Go", "Тестер 100K+ RPS")
+        Container(stability_tester, "Stability Tester", "Go", "Тестер 24h+ стабильности")
+    }
+}
+
+Deployment_Node(external_services, "External Services", "Third-party") {
+    Container(github, "GitHub", "Git Repository", "Исходный код и CI/CD")
+    Container(slack, "Slack", "Messaging", "Уведомления о тестах")
+    Container(pagerduty, "PagerDuty", "Incident Management", "Управление инцидентами")
+}
+
+' Связи между компонентами
+Rel(local_makefile, local_load_tests, "Запускает", "CLI")
+Rel(local_makefile, local_integration_tests, "Запускает", "CLI")
+
+Rel(github, ci_load_tests, "Триггерит", "GitHub Actions")
+Rel(ci_load_tests, test_artifacts, "Сохраняет", "Test Results")
+Rel(ci_integration_tests, test_artifacts, "Сохраняет", "Test Reports")
+Rel(ci_fault_tests, test_artifacts, "Сохраняет", "Fault Reports")
+
+Rel(test_orchestrator, load_generator_1, "Управляет", "Test Control")
+Rel(test_orchestrator, load_generator_2, "Управляет", "Test Control")
+Rel(test_orchestrator, chaos_agent, "Управляет", "Chaos Control")
+
+Rel(load_generator_1, bitswap_instance_1, "Нагружает", "Load Testing")
+Rel(load_generator_2, bitswap_instance_2, "Нагружает", "Load Testing")
+Rel(chaos_agent, bitswap_instance_n, "Инжектирует сбои", "Fault Injection")
+
+Rel(bitswap_instance_1, ipfs_node_1, "Использует", "IPFS Protocol")
+Rel(bitswap_instance_2, ipfs_node_2, "Использует", "IPFS Protocol")
+Rel(bitswap_instance_n, ipfs_node_n, "Использует", "IPFS Protocol")
+
+Rel(ipfs_node_1, ipfs_node_2, "Взаимодействует", "P2P Network")
+Rel(ipfs_node_2, ipfs_node_n, "Взаимодействует", "P2P Network")
+Rel(ipfs_node_1, ipfs_node_n, "Взаимодействует", "P2P Network")
+
+Rel(metrics_collector, prometheus, "Экспортирует", "Prometheus Metrics")
+Rel(prometheus, grafana, "Предоставляет данные", "PromQL")
+Rel(prometheus, alertmanager, "Отправляет алерты", "Alert Rules")
+
+Rel(prometheus, metrics_db, "Сохраняет", "Time Series Data")
+Rel(test_orchestrator, test_results_db, "Сохраняет", "Test Results")
+Rel(test_artifacts, artifacts_storage, "Загружает", "S3 API")
+
+Rel(extreme_load_generator, test_cluster, "Генерирует нагрузку", "Network Load")
+Rel(concurrent_conn_tester, test_cluster, "Тестирует соединения", "10K+ Connections")
+Rel(throughput_tester, test_cluster, "Тестирует пропускную способность", "100K+ RPS")
+Rel(stability_tester, test_cluster, "Тестирует стабильность", "24h+ Tests")
+
+Rel(alertmanager, slack, "Отправляет уведомления", "Webhook")
+Rel(alertmanager, pagerduty, "Создает инциденты", "API")
+Rel(ci_load_tests, github, "Обновляет статус", "GitHub API")
+
+@enduml

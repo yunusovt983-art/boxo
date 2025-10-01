@@ -1,0 +1,239 @@
+@startuml Task2_Level4_Code
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Task 2: Bitswap Adaptive Optimization - Code Level Detail
+
+' Task 2.1 - Adaptive Configuration Management
+package "Task 2.1: Adaptive Configuration" {
+    class AdaptiveBitswapConfig {
+        +MaxOutstandingBytesPerPeer: int64
+        +MinOutstandingBytesPerPeer: int64
+        +CurrentWorkerCount: int
+        +BatchSize: int
+        +BatchTimeout: time.Duration
+        +RequestsPerSecond: float64
+        +AverageResponseTime: time.Duration
+        +P95ResponseTime: time.Duration
+        --
+        +NewAdaptiveBitswapConfig(): *AdaptiveBitswapConfig
+        +UpdateMetrics(rps, avgTime, p95Time, outstanding, connections)
+        +AdaptConfiguration(ctx): bool
+        +GetMaxOutstandingBytesPerPeer(): int64
+        +GetCurrentWorkerCount(): int
+        +GetBatchConfig(): (int, time.Duration)
+    }
+    
+    class AdaptiveConnectionManager {
+        -config: *AdaptiveBitswapConfig
+        -monitor: *LoadMonitor
+        -connections: map[peer.ID]*ConnectionInfo
+        --
+        +NewAdaptiveConnectionManager(config, network): *AdaptiveConnectionManager
+        +PeerConnected(peerID: peer.ID)
+        +PeerDisconnected(peerID: peer.ID)
+        +RecordRequest(peerID: peer.ID, size: int64): *RequestTracker
+        +RecordResponse(peerID: peer.ID, duration: time.Duration, err: error)
+        +GetMaxOutstandingBytesForPeer(peerID: peer.ID): int64
+        +GetAllConnections(): map[peer.ID]*ConnectionInfo
+    }
+    
+    class ConnectionInfo {
+        +PeerID: peer.ID
+        +ConnectedAt: time.Time
+        +LastActivity: time.Time
+        +OutstandingBytes: int64
+        +RequestCount: int64
+        +ResponseCount: int64
+        +AverageResponseTime: time.Duration
+        +ErrorCount: int64
+    }
+}
+
+' Task 2.2 - Request Prioritization System
+package "Task 2.2: Request Prioritization" {
+    class LoadMonitor {
+        -config: *AdaptiveBitswapConfig
+        -requestCount: int64
+        -responseTimeSum: int64
+        -responseTimes: []time.Duration
+        -outstandingRequests: int64
+        --
+        +NewLoadMonitor(config): *LoadMonitor
+        +Start()
+        +Stop()
+        +RecordRequest(): *RequestTracker
+        +RecordResponse(duration: time.Duration, err: error)
+        +RecordConnectionChange(delta: int)
+        +GetCurrentMetrics(): LoadMetrics
+        +calculateP95ResponseTime(): time.Duration
+    }
+    
+    class RequestTracker {
+        -startTime: time.Time
+        -monitor: *LoadMonitor
+        --
+        +NewRequestTracker(monitor): *RequestTracker
+        +Complete(err: error)
+    }
+    
+    enum RequestPriority {
+        LowPriority
+        NormalPriority
+        HighPriority
+        CriticalPriority
+    }
+    
+    class LoadMetrics {
+        +RequestsPerSecond: float64
+        +AverageResponseTime: time.Duration
+        +P95ResponseTime: time.Duration
+        +OutstandingRequests: int64
+        +ActiveConnections: int
+        +ErrorRate: float64
+    }
+}
+
+' Task 2.3 - Batch Processing System
+package "Task 2.3: Batch Processing" {
+    class BatchRequestProcessor {
+        -config: *AdaptiveBitswapConfig
+        -criticalChan: chan *BatchRequest
+        -highChan: chan *BatchRequest
+        -normalChan: chan *BatchRequest
+        -lowChan: chan *BatchRequest
+        -criticalWorkers: *BatchWorkerPool
+        -highWorkers: *BatchWorkerPool
+        -normalWorkers: *BatchWorkerPool
+        -lowWorkers: *BatchWorkerPool
+        -pendingBatches: map[RequestPriority][]*BatchRequest
+        -metrics: *BatchProcessorMetrics
+        --
+        +NewBatchRequestProcessor(ctx, config, handler): *BatchRequestProcessor
+        +SubmitRequest(ctx, cid, peerID, priority): <-chan BatchResult
+        +UpdateConfiguration(config: *AdaptiveBitswapConfig)
+        +GetMetrics(): *BatchProcessorMetrics
+        +Close(): error
+        -processPriorityQueue(priority, requestChan, workerPool)
+        -addToBatch(priority, request, batchSize, timeout, workerPool)
+        -processBatch(priority, workerPool)
+    }
+    
+    class BatchRequest {
+        +CID: cid.Cid
+        +PeerID: peer.ID
+        +Priority: RequestPriority
+        +Timestamp: time.Time
+        +ResultChan: chan BatchResult
+        +Context: context.Context
+    }
+    
+    class BatchResult {
+        +Block: blocks.Block
+        +Error: error
+    }
+    
+    class WorkerPool {
+        -workers: int32
+        -maxWorkers: int32
+        -workChan: chan func()
+        -tasksSubmitted: int64
+        -tasksCompleted: int64
+        -activeWorkers: int32
+        --
+        +NewWorkerPool(ctx, workers): *WorkerPool
+        +Submit(task: func())
+        +Resize(newSize: int)
+        +GetStats(): WorkerPoolStats
+        +EnableAutoScaling()
+        +Close(): error
+        -startWorker()
+        -tryScaleUp()
+        -monitor()
+    }
+    
+    class BatchWorkerPool {
+        -workers: int
+        -workChan: chan func()
+        --
+        +NewBatchWorkerPool(ctx, workers): *BatchWorkerPool
+        +Submit(task: func())
+        +Resize(newSize: int)
+        +Close(): error
+        -worker()
+    }
+    
+    class BatchProcessorMetrics {
+        +TotalRequests: uint64
+        +BatchedRequests: uint64
+        +ProcessedBatches: uint64
+        +AverageBatchSize: float64
+        +AverageProcessTime: time.Duration
+        +PriorityMetrics: map[RequestPriority]*PriorityMetrics
+        --
+        +IncrementTotalRequests()
+        +IncrementBatchedRequests(count: uint64)
+        +UpdateProcessingTime(duration: time.Duration)
+        +GetSnapshot(): *BatchProcessorMetrics
+    }
+    
+    class WorkerPoolStats {
+        +Workers: int
+        +ActiveWorkers: int
+        +QueuedTasks: int
+        +QueueCapacity: int
+        +TasksSubmitted: int64
+        +TasksCompleted: int64
+        +MaxWorkers: int
+    }
+}
+
+' Relationships
+AdaptiveBitswapConfig ||--o{ AdaptiveConnectionManager : configures
+AdaptiveConnectionManager ||--o{ ConnectionInfo : manages
+AdaptiveConnectionManager ||--|| LoadMonitor : uses
+
+LoadMonitor ||--o{ RequestTracker : creates
+LoadMonitor ||--|| LoadMetrics : produces
+LoadMonitor ||--|| AdaptiveBitswapConfig : updates
+
+BatchRequestProcessor ||--|| AdaptiveBitswapConfig : uses
+BatchRequestProcessor ||--o{ BatchRequest : processes
+BatchRequestProcessor ||--|| BatchProcessorMetrics : tracks
+BatchRequestProcessor ||--o{ BatchWorkerPool : manages
+BatchRequestProcessor ||--|| WorkerPool : delegates_to
+
+BatchRequest ||--|| RequestPriority : has
+BatchRequest ||--|| BatchResult : produces
+
+WorkerPool ||--|| WorkerPoolStats : reports
+BatchWorkerPool ||--|| WorkerPool : simpler_version_of
+
+note top of AdaptiveBitswapConfig
+**Key Configuration Parameters:**
+- MaxOutstandingBytesPerPeer: 1MB-100MB
+- Worker pools: 128-2048 workers
+- Batch sizes: 50-1000 requests
+- Adaptation interval: 30 seconds
+- Load thresholds: 0.3 (low) - 0.8 (high)
+end note
+
+note top of BatchRequestProcessor
+**Performance Characteristics:**
+- Throughput: 471k ops/sec (single requests)
+- Concurrent: 2.3k ops/sec (parallel)
+- High-throughput: 437k ops/sec
+- Latency: ~2.3μs per operation
+- Memory: ~900B per operation
+end note
+
+note top of LoadMonitor
+**Monitoring Capabilities:**
+- P95 response time calculation
+- Request rate tracking (RPS)
+- Connection count monitoring
+- Error rate calculation
+- Circular buffer for response times
+- Real-time metrics updates
+end note
+
+@enduml

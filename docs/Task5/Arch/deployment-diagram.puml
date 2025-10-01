@@ -1,0 +1,106 @@
+@startuml Task5-Deployment-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+
+title Система мониторинга производительности - Диаграмма развертывания
+
+Deployment_Node(monitoring_cluster, "Monitoring Cluster", "Kubernetes/Docker Swarm") {
+    Deployment_Node(monitoring_node1, "Monitoring Node 1", "Linux Server") {
+        Container(perf_monitor_1, "Performance Monitor", "Go Service", "Сборщик метрик")
+        Container(analyzer_1, "Bottleneck Analyzer", "Go Service", "Анализатор узких мест")
+        ContainerDb(metrics_cache_1, "Metrics Cache", "Redis", "Кэш метрик")
+    }
+
+    Deployment_Node(monitoring_node2, "Monitoring Node 2", "Linux Server") {
+        Container(alert_mgr_1, "Alert Manager", "Go Service", "Система алертов")
+        Container(auto_tuner_1, "Auto Tuner", "Go Service", "Автоматический тюнер")
+        ContainerDb(config_store_1, "Config Store", "etcd", "Хранилище конфигураций")
+    }
+
+    Deployment_Node(web_node, "Web Node", "Linux Server") {
+        Container(web_dashboard_1, "Web Dashboard", "React/Go", "Веб-интерфейс")
+        Container(api_gateway, "API Gateway", "Nginx", "Прокси и балансировщик")
+    }
+}
+
+Deployment_Node(ipfs_cluster, "IPFS Cluster", "Kubernetes") {
+    Deployment_Node(ipfs_node1, "IPFS Node 1", "Linux Server") {
+        Container(boxo_bitswap_1, "Boxo Bitswap", "Go Service", "Обмен блоками")
+        Container(boxo_blockstore_1, "Boxo Blockstore", "Go Service", "Хранение блоков")
+        Container(boxo_network_1, "Boxo Network", "Go Service", "Сетевой слой")
+    }
+
+    Deployment_Node(ipfs_node2, "IPFS Node 2", "Linux Server") {
+        Container(boxo_bitswap_2, "Boxo Bitswap", "Go Service", "Обмен блоками")
+        Container(boxo_blockstore_2, "Boxo Blockstore", "Go Service", "Хранение блоков")
+        Container(boxo_network_2, "Boxo Network", "Go Service", "Сетевой слой")
+    }
+
+    Deployment_Node(ipfs_node3, "IPFS Node 3", "Linux Server") {
+        Container(boxo_bitswap_3, "Boxo Bitswap", "Go Service", "Обмен блоками")
+        Container(boxo_blockstore_3, "Boxo Blockstore", "Go Service", "Хранение блоков")
+        Container(boxo_network_3, "Boxo Network", "Go Service", "Сетевой слой")
+    }
+}
+
+Deployment_Node(observability_stack, "Observability Stack", "Docker Compose") {
+    Deployment_Node(metrics_node, "Metrics Node", "Linux Server") {
+        Container(prometheus_1, "Prometheus", "Time Series DB", "Сбор и хранение метрик")
+        Container(grafana_1, "Grafana", "Visualization", "Дашборды и графики")
+    }
+
+    Deployment_Node(logging_node, "Logging Node", "Linux Server") {
+        Container(elasticsearch, "Elasticsearch", "Search Engine", "Хранение логов")
+        Container(kibana, "Kibana", "Log Visualization", "Анализ логов")
+        Container(logstash, "Logstash", "Log Processing", "Обработка логов")
+    }
+}
+
+Deployment_Node(external_services, "External Services", "Cloud") {
+    Container(slack_api, "Slack API", "Messaging", "Уведомления в Slack")
+    Container(email_service, "Email Service", "SMTP", "Email уведомления")
+    Container(pagerduty, "PagerDuty", "Incident Management", "Управление инцидентами")
+}
+
+' Monitoring relationships
+Rel(perf_monitor_1, boxo_bitswap_1, "Собирает метрики", "gRPC/HTTP")
+Rel(perf_monitor_1, boxo_bitswap_2, "Собирает метрики", "gRPC/HTTP")
+Rel(perf_monitor_1, boxo_bitswap_3, "Собирает метрики", "gRPC/HTTP")
+Rel(perf_monitor_1, boxo_blockstore_1, "Собирает метрики", "gRPC/HTTP")
+Rel(perf_monitor_1, boxo_blockstore_2, "Собирает метрики", "gRPC/HTTP")
+Rel(perf_monitor_1, boxo_blockstore_3, "Собирает метрики", "gRPC/HTTP")
+Rel(perf_monitor_1, boxo_network_1, "Собирает метрики", "gRPC/HTTP")
+Rel(perf_monitor_1, boxo_network_2, "Собирает метрики", "gRPC/HTTP")
+Rel(perf_monitor_1, boxo_network_3, "Собирает метрики", "gRPC/HTTP")
+
+Rel(perf_monitor_1, prometheus_1, "Экспортирует метрики", "HTTP")
+Rel(perf_monitor_1, metrics_cache_1, "Кэширует метрики", "Redis Protocol")
+
+Rel(analyzer_1, metrics_cache_1, "Читает метрики", "Redis Protocol")
+Rel(analyzer_1, alert_mgr_1, "Генерирует алерты", "HTTP/gRPC")
+
+Rel(alert_mgr_1, slack_api, "Отправляет уведомления", "HTTPS/Webhook")
+Rel(alert_mgr_1, email_service, "Отправляет email", "SMTP")
+Rel(alert_mgr_1, pagerduty, "Создает инциденты", "HTTPS/API")
+
+Rel(auto_tuner_1, config_store_1, "Читает/записывает конфиг", "etcd API")
+Rel(auto_tuner_1, boxo_bitswap_1, "Применяет настройки", "gRPC/HTTP")
+Rel(auto_tuner_1, boxo_bitswap_2, "Применяет настройки", "gRPC/HTTP")
+Rel(auto_tuner_1, boxo_bitswap_3, "Применяет настройки", "gRPC/HTTP")
+
+Rel(web_dashboard_1, api_gateway, "Веб-интерфейс", "HTTP")
+Rel(api_gateway, perf_monitor_1, "API запросы", "HTTP")
+Rel(api_gateway, analyzer_1, "API запросы", "HTTP")
+Rel(api_gateway, alert_mgr_1, "API запросы", "HTTP")
+Rel(api_gateway, auto_tuner_1, "API запросы", "HTTP")
+
+Rel(grafana_1, prometheus_1, "Запросы метрик", "PromQL/HTTP")
+Rel(kibana, elasticsearch, "Поиск логов", "HTTP/JSON")
+Rel(logstash, elasticsearch, "Индексирует логи", "HTTP/JSON")
+
+' Logging relationships
+Rel(perf_monitor_1, logstash, "Отправляет логи", "TCP/JSON")
+Rel(analyzer_1, logstash, "Отправляет логи", "TCP/JSON")
+Rel(alert_mgr_1, logstash, "Отправляет логи", "TCP/JSON")
+Rel(auto_tuner_1, logstash, "Отправляет логи", "TCP/JSON")
+
+@enduml

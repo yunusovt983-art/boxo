@@ -1,0 +1,58 @@
+@startuml Task2-Container-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Task 2: Оптимизация Bitswap - Диаграмма контейнеров
+
+Person(developer, "Разработчик")
+Person(admin, "Администратор")
+
+System_Boundary(boxo, "Boxo IPFS Implementation") {
+    Container(bitswap_core, "Bitswap Core", "Go", "Основная логика протокола Bitswap")
+    
+    Container_Boundary(optimization_layer, "Task 2: Bitswap Optimization Layer") {
+        Container(adaptive_config, "Adaptive Configuration", "Go", "Динамическое управление конфигурацией с автоматической адаптацией")
+        Container(priority_system, "Priority Request System", "Go", "Система приоритизации запросов с очередями разных уровней")
+        Container(batch_processor, "Batch Request Processor", "Go", "Батчевая обработка запросов с параллельными worker pools")
+        Container(circuit_breaker, "Circuit Breaker", "Go", "Защита от перегрузки с постепенным восстановлением")
+    }
+    
+    Container(load_monitor, "Load Monitor", "Go", "Мониторинг производительности и сбор метрик")
+    Container(metrics_collector, "Metrics Collector", "Go", "Сбор и экспорт метрик производительности")
+}
+
+System_Ext(external_peers, "External IPFS Peers")
+System_Ext(local_blockstore, "Local Blockstore")
+System_Ext(monitoring_sys, "Monitoring System")
+
+Rel(developer, bitswap_core, "API вызовы")
+Rel(admin, adaptive_config, "Настройка параметров")
+
+Rel(bitswap_core, adaptive_config, "Получение динамических лимитов")
+Rel(bitswap_core, priority_system, "Классификация и постановка в очередь")
+Rel(bitswap_core, batch_processor, "Батчевая обработка запросов")
+Rel(bitswap_core, circuit_breaker, "Защита от перегрузки")
+
+Rel(adaptive_config, load_monitor, "Получение метрик для адаптации")
+Rel(priority_system, load_monitor, "Отчеты о производительности")
+Rel(batch_processor, load_monitor, "Метрики обработки батчей")
+Rel(circuit_breaker, load_monitor, "Состояние здоровья системы")
+
+Rel(load_monitor, metrics_collector, "Передача метрик")
+Rel(metrics_collector, monitoring_sys, "Экспорт метрик", "Prometheus")
+
+Rel(bitswap_core, external_peers, "Обмен блоками", "libp2p")
+Rel(bitswap_core, local_blockstore, "Чтение/запись блоков")
+
+Rel_U(adaptive_config, priority_system, "Обновление приоритетных порогов")
+Rel_U(adaptive_config, batch_processor, "Обновление размеров батчей")
+Rel_U(priority_system, batch_processor, "Приоритизированные запросы")
+
+note right of optimization_layer
+**Task 2 Компоненты:**
+• 2.1: Adaptive Configuration Management
+• 2.2: Request Prioritization System  
+• 2.3: Batch Request Processing
+• 2.4: Circuit Breaker Protection
+end note
+
+@enduml

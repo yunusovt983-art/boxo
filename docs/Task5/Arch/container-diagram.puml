@@ -1,0 +1,63 @@
+@startuml Task5-Container-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Система мониторинга и метрик производительности - Диаграмма контейнеров
+
+Person(admin, "Системный администратор")
+Person(developer, "Разработчик") 
+Person(operator, "DevOps инженер")
+
+System_Boundary(monitoring_system, "Система мониторинга производительности") {
+    Container(performance_monitor, "Performance Monitor", "Go Service", "Сборщик метрик производительности с экспортом в Prometheus")
+    Container(bottleneck_analyzer, "Bottleneck Analyzer", "Go Service", "Анализатор узких мест с алгоритмами выявления проблем")
+    Container(alert_manager, "Alert Manager", "Go Service", "Система алертов и структурированного логирования")
+    Container(auto_tuner, "Auto Tuner", "Go Service", "Автоматический тюнер параметров с ML алгоритмами")
+    Container(metrics_storage, "Metrics Storage", "In-Memory/Redis", "Временное хранилище метрик для анализа")
+    Container(config_storage, "Config Storage", "File/etcd", "Хранилище конфигураций и параметров")
+    Container(web_dashboard, "Web Dashboard", "React/Go", "Веб-интерфейс для мониторинга и управления")
+}
+
+System_Ext(boxo_bitswap, "Boxo Bitswap", "Компонент обмена блоками")
+System_Ext(boxo_blockstore, "Boxo Blockstore", "Компонент хранения блоков")
+System_Ext(boxo_network, "Boxo Network", "Сетевой компонент")
+System_Ext(prometheus, "Prometheus", "Система метрик")
+System_Ext(grafana, "Grafana", "Визуализация")
+System_Ext(external_alerting, "External Alerting", "Slack/Email")
+
+' Пользователи
+Rel(admin, web_dashboard, "Мониторинг", "HTTPS")
+Rel(developer, web_dashboard, "Анализ метрик", "HTTPS")
+Rel(operator, web_dashboard, "Настройка алертов", "HTTPS")
+
+' Сбор метрик
+Rel(performance_monitor, boxo_bitswap, "Собирает метрики", "Go interfaces")
+Rel(performance_monitor, boxo_blockstore, "Собирает метрики", "Go interfaces")
+Rel(performance_monitor, boxo_network, "Собирает метрики", "Go interfaces")
+Rel(performance_monitor, metrics_storage, "Сохраняет метрики", "TCP")
+Rel(performance_monitor, prometheus, "Экспортирует метрики", "HTTP")
+
+' Анализ узких мест
+Rel(bottleneck_analyzer, metrics_storage, "Читает метрики", "TCP")
+Rel(bottleneck_analyzer, alert_manager, "Генерирует алерты", "Go channels")
+Rel(bottleneck_analyzer, auto_tuner, "Рекомендации", "Go interfaces")
+
+' Система алертов
+Rel(alert_manager, external_alerting, "Отправляет уведомления", "HTTP/Webhook")
+Rel(alert_manager, web_dashboard, "Статус алертов", "WebSocket")
+
+' Автоматический тюнер
+Rel(auto_tuner, config_storage, "Читает/записывает конфиг", "File I/O")
+Rel(auto_tuner, boxo_bitswap, "Применяет настройки", "Go interfaces")
+Rel(auto_tuner, boxo_blockstore, "Применяет настройки", "Go interfaces")
+Rel(auto_tuner, boxo_network, "Применяет настройки", "Go interfaces")
+
+' Веб-дашборд
+Rel(web_dashboard, performance_monitor, "API запросы", "HTTP/JSON")
+Rel(web_dashboard, bottleneck_analyzer, "API запросы", "HTTP/JSON")
+Rel(web_dashboard, alert_manager, "API запросы", "HTTP/JSON")
+Rel(web_dashboard, auto_tuner, "API запросы", "HTTP/JSON")
+
+' Внешние системы
+Rel(grafana, prometheus, "Запросы метрик", "PromQL")
+
+@enduml

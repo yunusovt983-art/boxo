@@ -1,0 +1,139 @@
+@startuml Task7_Component_FaultTolerance
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Task 7.3: Тестирование отказоустойчивости - Component Diagram
+
+Container_Boundary(fault_tolerance_container, "Fault Tolerance Testing Container") {
+    
+    Component_Boundary(chaos_engineering_core, "Ядро Chaos Engineering") {
+        Component(chaos_engine, "ChaosEngine", "Go struct", "Главный движок chaos engineering")
+        Component(fault_injector, "FaultInjector", "Go struct", "Инжектор сбоев в систему")
+        Component(chaos_orchestrator, "ChaosOrchestrator", "Go struct", "Оркестратор хаос-тестов")
+        Component(chaos_scheduler, "ChaosScheduler", "Go struct", "Планировщик хаос-экспериментов")
+    }
+    
+    Component_Boundary(failure_simulation, "Симуляция сбоев") {
+        Component(network_failure_sim, "NetworkFailureSimulator", "Go struct", "Симулятор сбоев сети")
+        Component(node_failure_sim, "NodeFailureSimulator", "Go struct", "Симулятор сбоев узлов")
+        Component(disk_failure_sim, "DiskFailureSimulator", "Go struct", "Симулятор сбоев дисков")
+        Component(memory_pressure_sim, "MemoryPressureSimulator", "Go struct", "Симулятор нехватки памяти")
+        Component(cpu_stress_sim, "CPUStressSimulator", "Go struct", "Симулятор нагрузки на CPU")
+        Component(partition_sim, "NetworkPartitionSimulator", "Go struct", "Симулятор разделения сети")
+    }
+    
+    Component_Boundary(recovery_testing, "Тестирование восстановления") {
+        Component(recovery_test_engine, "RecoveryTestEngine", "Go struct", "Движок тестов восстановления")
+        Component(graceful_degradation_test, "GracefulDegradationTest", "Go struct", "Тесты graceful degradation")
+        Component(auto_recovery_test, "AutoRecoveryTest", "Go struct", "Тесты автоматического восстановления")
+        Component(manual_recovery_test, "ManualRecoveryTest", "Go struct", "Тесты ручного восстановления")
+        Component(rollback_test, "RollbackTest", "Go struct", "Тесты отката изменений")
+    }
+    
+    Component_Boundary(circuit_breaker_testing, "Тестирование Circuit Breaker") {
+        Component(circuit_breaker_validator, "CircuitBreakerValidator", "Go struct", "Валидатор circuit breaker логики")
+        Component(threshold_test, "ThresholdTest", "Go struct", "Тесты порогов срабатывания")
+        Component(state_transition_test, "StateTransitionTest", "Go struct", "Тесты переходов состояний")
+        Component(recovery_window_test, "RecoveryWindowTest", "Go struct", "Тесты окна восстановления")
+    }
+    
+    Component_Boundary(fault_monitoring, "Мониторинг сбоев") {
+        Component(fault_detector, "FaultDetector", "Go struct", "Детектор сбоев в системе")
+        Component(health_checker, "HealthChecker", "Go struct", "Проверка здоровья компонентов")
+        Component(sla_monitor, "SLAMonitor", "Go struct", "Мониторинг SLA во время сбоев")
+        Component(recovery_time_tracker, "RecoveryTimeTracker", "Go struct", "Отслеживание времени восстановления")
+        Component(incident_logger, "IncidentLogger", "Go struct", "Логирование инцидентов")
+    }
+    
+    Component_Boundary(resilience_patterns, "Паттерны устойчивости") {
+        Component(retry_pattern_test, "RetryPatternTest", "Go struct", "Тесты паттерна Retry")
+        Component(timeout_pattern_test, "TimeoutPatternTest", "Go struct", "Тесты паттерна Timeout")
+        Component(bulkhead_pattern_test, "BulkheadPatternTest", "Go struct", "Тесты паттерна Bulkhead")
+        Component(rate_limiter_test, "RateLimiterTest", "Go struct", "Тесты Rate Limiter")
+        Component(fallback_pattern_test, "FallbackPatternTest", "Go struct", "Тесты паттерна Fallback")
+    }
+    
+    Component_Boundary(chaos_experiments, "Хаос-эксперименты") {
+        Component(experiment_designer, "ExperimentDesigner", "Go struct", "Дизайнер хаос-экспериментов")
+        Component(hypothesis_validator, "HypothesisValidator", "Go struct", "Валидатор гипотез")
+        Component(blast_radius_controller, "BlastRadiusController", "Go struct", "Контроллер радиуса воздействия")
+        Component(safety_checker, "SafetyChecker", "Go struct", "Проверка безопасности экспериментов")
+    }
+    
+    Component_Boundary(reporting_analysis, "Отчетность и анализ") {
+        Component(fault_report_generator, "FaultReportGenerator", "Go struct", "Генератор отчетов о сбоях")
+        Component(resilience_analyzer, "ResilienceAnalyzer", "Go struct", "Анализатор устойчивости системы")
+        Component(mttr_calculator, "MTTRCalculator", "Go struct", "Калькулятор MTTR")
+        Component(postmortem_generator, "PostmortemGenerator", "Go struct", "Генератор postmortem отчетов")
+    }
+}
+
+System_Ext(bitswap_system, "Bitswap System")
+System_Ext(ipfs_cluster, "IPFS Cluster")
+System_Ext(monitoring_system, "Monitoring System")
+System_Ext(alerting_system, "Alerting System")
+System_Ext(incident_management, "Incident Management")
+
+' Взаимодействие внутри ядра Chaos Engineering
+Rel(chaos_engine, chaos_orchestrator, "Управляет", "Chaos orchestration")
+Rel(chaos_orchestrator, fault_injector, "Инжектирует сбои", "Fault injection")
+Rel(chaos_scheduler, chaos_orchestrator, "Планирует", "Scheduled chaos")
+
+' Взаимодействие с симуляцией сбоев
+Rel(fault_injector, network_failure_sim, "Использует", "Network failures")
+Rel(fault_injector, node_failure_sim, "Использует", "Node failures")
+Rel(fault_injector, disk_failure_sim, "Использует", "Disk failures")
+Rel(fault_injector, memory_pressure_sim, "Использует", "Memory pressure")
+Rel(fault_injector, cpu_stress_sim, "Использует", "CPU stress")
+Rel(fault_injector, partition_sim, "Использует", "Network partitions")
+
+' Взаимодействие с тестированием восстановления
+Rel(chaos_orchestrator, recovery_test_engine, "Запускает", "Recovery tests")
+Rel(recovery_test_engine, graceful_degradation_test, "Выполняет", "Degradation tests")
+Rel(recovery_test_engine, auto_recovery_test, "Выполняет", "Auto recovery tests")
+Rel(recovery_test_engine, manual_recovery_test, "Выполняет", "Manual recovery tests")
+Rel(recovery_test_engine, rollback_test, "Выполняет", "Rollback tests")
+
+' Взаимодействие с тестированием Circuit Breaker
+Rel(chaos_orchestrator, circuit_breaker_validator, "Валидирует", "CB validation")
+Rel(circuit_breaker_validator, threshold_test, "Тестирует", "Threshold tests")
+Rel(circuit_breaker_validator, state_transition_test, "Тестирует", "State transitions")
+Rel(circuit_breaker_validator, recovery_window_test, "Тестирует", "Recovery windows")
+
+' Взаимодействие с мониторингом сбоев
+Rel(chaos_orchestrator, fault_detector, "Использует", "Fault detection")
+Rel(recovery_test_engine, health_checker, "Использует", "Health checking")
+Rel(chaos_orchestrator, sla_monitor, "Мониторит", "SLA monitoring")
+Rel(recovery_test_engine, recovery_time_tracker, "Отслеживает", "Recovery time")
+Rel(fault_detector, incident_logger, "Логирует", "Incident logging")
+
+' Взаимодействие с паттернами устойчивости
+Rel(chaos_orchestrator, retry_pattern_test, "Тестирует", "Retry patterns")
+Rel(chaos_orchestrator, timeout_pattern_test, "Тестирует", "Timeout patterns")
+Rel(chaos_orchestrator, bulkhead_pattern_test, "Тестирует", "Bulkhead patterns")
+Rel(chaos_orchestrator, rate_limiter_test, "Тестирует", "Rate limiting")
+Rel(chaos_orchestrator, fallback_pattern_test, "Тестирует", "Fallback patterns")
+
+' Взаимодействие с хаос-экспериментами
+Rel(chaos_engine, experiment_designer, "Использует", "Experiment design")
+Rel(experiment_designer, hypothesis_validator, "Валидирует", "Hypothesis validation")
+Rel(chaos_orchestrator, blast_radius_controller, "Контролирует", "Blast radius")
+Rel(chaos_orchestrator, safety_checker, "Проверяет", "Safety checks")
+
+' Взаимодействие с отчетностью и анализом
+Rel(chaos_orchestrator, fault_report_generator, "Генерирует отчеты", "Fault reports")
+Rel(recovery_test_engine, resilience_analyzer, "Анализирует", "Resilience analysis")
+Rel(recovery_time_tracker, mttr_calculator, "Рассчитывает", "MTTR calculation")
+Rel(incident_logger, postmortem_generator, "Генерирует", "Postmortem reports")
+
+' Взаимодействие с внешними системами
+Rel(network_failure_sim, bitswap_system, "Симулирует сбои", "Network failures")
+Rel(node_failure_sim, ipfs_cluster, "Симулирует сбои", "Node failures")
+Rel(graceful_degradation_test, bitswap_system, "Тестирует деградацию", "Graceful degradation")
+Rel(circuit_breaker_validator, bitswap_system, "Валидирует CB", "Circuit breaker logic")
+
+Rel(fault_detector, monitoring_system, "Отправляет метрики", "Fault metrics")
+Rel(sla_monitor, monitoring_system, "Мониторит SLA", "SLA metrics")
+Rel(incident_logger, alerting_system, "Отправляет алерты", "Incident alerts")
+Rel(postmortem_generator, incident_management, "Создает postmortem", "Incident reports")
+
+@enduml

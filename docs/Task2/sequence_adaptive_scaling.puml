@@ -1,0 +1,151 @@
+@startuml Task2_Sequence_AdaptiveScaling
+title Task 2.1 & 2.2: Adaptive Scaling and Load Monitoring Sequence
+
+participant "Bitswap Client" as client
+participant "AdaptiveConnectionManager" as connMgr
+participant "LoadMonitor" as monitor
+participant "AdaptiveBitswapConfig" as config
+participant "RequestTracker" as tracker
+participant "WorkerPool" as workers
+
+== Initial Request Processing ==
+client -> connMgr: RecordRequest(peerID, size)
+activate connMgr
+
+connMgr -> monitor: RecordRequest()
+activate monitor
+
+monitor -> tracker: NewRequestTracker()
+activate tracker
+
+connMgr -> client: Return RequestTracker
+deactivate connMgr
+
+== Request Completion ==
+client -> tracker: Complete(error)
+tracker -> monitor: Record response time & error
+deactivate tracker
+
+monitor -> monitor: Update metrics\n(RPS, avg response time, P95)
+deactivate monitor
+
+== Periodic Load Assessment ==
+loop Every 10 seconds
+    monitor -> monitor: Calculate current metrics
+    activate monitor
+    
+    monitor -> config: UpdateMetrics(rps, avgTime, p95Time, outstanding, connections)
+    activate config
+    
+    config -> config: calculateLoadFactor()
+    
+    alt Load factor > 0.8 (High Load)
+        config -> config: scaleUp()
+        note right: Increase MaxOutstandingBytesPerPeer\nIncrease worker count\nIncrease batch size
+        
+        config -> connMgr: Apply new connection limits
+        config -> workers: Resize worker pools
+        activate workers
+        workers -> workers: Start additional workers
+        deactivate workers
+        
+    else Load factor < 0.3 (Low Load)
+        config -> config: scaleDown()
+        note right: Decrease MaxOutstandingBytesPerPeer\nDecrease worker count\nDecrease batch size
+        
+        config -> connMgr: Apply new connection limits
+        config -> workers: Resize worker pools
+        activate workers
+        workers -> workers: Natural worker attrition
+        deactivate workers
+    end
+    
+    deactivate config
+    deactivate monitor
+end
+
+== Connection Management ==
+client -> connMgr: GetMaxOutstandingBytesForPeer(peerID)
+activate connMgr
+
+connMgr -> config: GetMaxOutstandingBytesPerPeer()
+activate config
+
+alt Peer has high error rate
+    connMgr -> connMgr: Apply penalty (reduce limit)
+else Peer has good performance
+    connMgr -> connMgr: Use full adaptive limit
+end
+
+config -> connMgr: Return current limit
+deactivate config
+
+connMgr -> client: Return peer-specific limit
+deactivate connMgr
+
+== Priority-Based Resource Allocation ==
+client -> connMgr: SubmitRequest(priority=Critical)
+activate connMgr
+
+alt Critical Priority Request
+    connMgr -> config: GetPriorityThresholds()
+    activate config
+    
+    note right: Critical threshold: <10ms\nHigh threshold: <50ms
+    
+    config -> connMgr: Return thresholds
+    deactivate config
+    
+    connMgr -> workers: Route to critical worker pool (25% allocation)
+    activate workers
+    
+    workers -> workers: Process with highest priority
+    workers -> connMgr: Fast response
+    deactivate workers
+    
+else Normal Priority Request
+    connMgr -> workers: Route to normal worker pool (33% allocation)
+    activate workers
+    workers -> workers: Process in normal queue
+    workers -> connMgr: Standard response
+    deactivate workers
+end
+
+deactivate connMgr
+
+note over config
+**Adaptive Parameters:**
+- MaxOutstandingBytesPerPeer: 256KB → 100MB
+- Worker count: 128 → 2048
+- Batch size: 50 → 1000
+- Adaptation interval: 30s minimum
+- Load calculation: weighted average of
+  * Response time factor (30%)
+  * P95 response time factor (30%)
+  * Outstanding requests factor (20%)
+  * RPS factor (20%)
+end note
+
+note over monitor
+**Monitoring Metrics:**
+- Requests per second (RPS)
+- Average response time
+- P95 response time (SLA monitoring)
+- Outstanding request count
+- Active connection count
+- Error rates per peer
+- Circular buffer: 1000 recent response times
+end note
+
+note over workers
+**Worker Pool Management:**
+- Priority-based allocation:
+  * Critical: 25% of workers
+  * High: 25% of workers  
+  * Normal: 33% of workers
+  * Low: 17% of workers
+- Auto-scaling based on queue depth
+- Panic recovery for stability
+end note
+
+@enduml

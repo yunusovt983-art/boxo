@@ -1,0 +1,254 @@
+version: '3.8'
+
+services:
+  # IPFS Cluster Node 0 (Bootstrap node)
+  ipfs-cluster-0:
+    image: ipfs/ipfs-cluster:latest
+    container_name: cluster-0
+    environment:
+      - CLUSTER_PEERNAME=cluster-0
+      - CLUSTER_SECRET=${CLUSTER_SECRET:-your-32-byte-secret-here}
+      - IPFS_API=/dns4/ipfs-0/tcp/5001
+      - BOXO_CONFIG_TYPE=medium
+      - BOXO_METRICS_ENABLED=true
+    volumes:
+      - cluster-0-data:/data/ipfs-cluster
+      - ./configs/cluster-config.json:/data/ipfs-cluster/service.json:ro
+    ports:
+      - "9094:9094"   # REST API
+      - "9095:9095"   # IPFS Proxy API
+      - "9096:9096"   # Cluster swarm
+    networks:
+      - cluster-net
+    depends_on:
+      - ipfs-0
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  # IPFS Cluster Node 1
+  ipfs-cluster-1:
+    image: ipfs/ipfs-cluster:latest
+    container_name: cluster-1
+    environment:
+      - CLUSTER_PEERNAME=cluster-1
+      - CLUSTER_SECRET=${CLUSTER_SECRET:-your-32-byte-secret-here}
+      - IPFS_API=/dns4/ipfs-1/tcp/5001
+      - BOXO_CONFIG_TYPE=medium
+      - BOXO_METRICS_ENABLED=true
+    volumes:
+      - cluster-1-data:/data/ipfs-cluster
+      - ./configs/cluster-config.json:/data/ipfs-cluster/service.json:ro
+    ports:
+      - "9097:9094"   # REST API
+      - "9098:9095"   # IPFS Proxy API
+      - "9099:9096"   # Cluster swarm
+    networks:
+      - cluster-net
+    depends_on:
+      - ipfs-1
+      - ipfs-cluster-0
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  # IPFS Cluster Node 2
+  ipfs-cluster-2:
+    image: ipfs/ipfs-cluster:latest
+    container_name: cluster-2
+    environment:
+      - CLUSTER_PEERNAME=cluster-2
+      - CLUSTER_SECRET=${CLUSTER_SECRET:-your-32-byte-secret-here}
+      - IPFS_API=/dns4/ipfs-2/tcp/5001
+      - BOXO_CONFIG_TYPE=medium
+      - BOXO_METRICS_ENABLED=true
+    volumes:
+      - cluster-2-data:/data/ipfs-cluster
+      - ./configs/cluster-config.json:/data/ipfs-cluster/service.json:ro
+    ports:
+      - "9100:9094"   # REST API
+      - "9101:9095"   # IPFS Proxy API
+      - "9102:9096"   # Cluster swarm
+    networks:
+      - cluster-net
+    depends_on:
+      - ipfs-2
+      - ipfs-cluster-0
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  # IPFS Node 0
+  ipfs-0:
+    image: ipfs/kubo:latest
+    container_name: ipfs-0
+    environment:
+      - IPFS_PROFILE=server
+      - IPFS_PATH=/data/ipfs
+    volumes:
+      - ipfs-0-data:/data/ipfs
+      - ./configs/ipfs-config.json:/data/ipfs/config:ro
+    ports:
+      - "4001:4001"   # Swarm
+      - "5001:5001"   # API
+      - "8080:8080"   # Gateway
+    networks:
+      - cluster-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2'
+        reservations:
+          memory: 2G
+          cpus: '1'
+
+  # IPFS Node 1
+  ipfs-1:
+    image: ipfs/kubo:latest
+    container_name: ipfs-1
+    environment:
+      - IPFS_PROFILE=server
+      - IPFS_PATH=/data/ipfs
+    volumes:
+      - ipfs-1-data:/data/ipfs
+      - ./configs/ipfs-config.json:/data/ipfs/config:ro
+    ports:
+      - "4002:4001"   # Swarm
+      - "5002:5001"   # API
+      - "8081:8080"   # Gateway
+    networks:
+      - cluster-net
+    depends_on:
+      - ipfs-0
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2'
+        reservations:
+          memory: 2G
+          cpus: '1'
+
+  # IPFS Node 2
+  ipfs-2:
+    image: ipfs/kubo:latest
+    container_name: ipfs-2
+    environment:
+      - IPFS_PROFILE=server
+      - IPFS_PATH=/data/ipfs
+    volumes:
+      - ipfs-2-data:/data/ipfs
+      - ./configs/ipfs-config.json:/data/ipfs/config:ro
+    ports:
+      - "4003:4001"   # Swarm
+      - "5003:5001"   # API
+      - "8082:8080"   # Gateway
+    networks:
+      - cluster-net
+    depends_on:
+      - ipfs-0
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2'
+        reservations:
+          memory: 2G
+          cpus: '1'
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - cluster-net
+    restart: unless-stopped
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    networks:
+      - cluster-net
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # Load balancer for cluster API
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-lb
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - cluster-net
+    depends_on:
+      - ipfs-cluster-0
+      - ipfs-cluster-1
+      - ipfs-cluster-2
+    restart: unless-stopped
+
+volumes:
+  cluster-0-data:
+  cluster-1-data:
+  cluster-2-data:
+  ipfs-0-data:
+  ipfs-1-data:
+  ipfs-2-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  cluster-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

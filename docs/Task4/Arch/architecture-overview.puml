@@ -1,0 +1,93 @@
+@startuml Task4-Architecture-Overview
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Task 4: Общая архитектура сетевой оптимизации
+
+System_Boundary(task4_system, "Task 4: Сетевая оптимизация") {
+    
+    Container_Boundary(task41, "Task 4.1: Адаптивный менеджер соединений") {
+        Component(adaptive_conn_mgr, "AdaptiveConnManager", "1,200+ строк", "Динамические лимиты HighWater/LowWater, автоматическая настройка GracePeriod")
+        Component(load_monitor, "LoadMonitor", "200+ строк", "Мониторинг системной нагрузки")
+        Component(cluster_pool, "ClusterConnectionPool", "300+ строк", "Пулы постоянных соединений")
+    }
+    
+    Container_Boundary(task42, "Task 4.2: Мониторинг качества соединений") {
+        Component(quality_tracker, "ConnectionQuality", "400+ строк", "Структура отслеживания метрик")
+        Component(latency_monitor, "LatencyMonitor", "200+ строк", "Измерение латентности")
+        Component(route_optimizer, "RouteOptimizer", "300+ строк", "Автоматическое переключение маршрутов")
+    }
+    
+    Container_Boundary(task43, "Task 4.3: Буферизация и Keep-Alive") {
+        Component(buffer_manager, "BufferKeepAliveManager", "1,200+ строк", "Адаптивная буферизация и keep-alive")
+        Component(bandwidth_monitor, "BandwidthMonitor", "400+ строк", "Мониторинг пропускной способности")
+        Component(keepalive_mgr, "KeepAliveManager", "300+ строк", "Интеллектуальное управление keep-alive")
+        Component(slow_detector, "SlowConnectionDetector", "300+ строк", "Обнаружение медленных соединений")
+    }
+    
+    Container_Boundary(testing, "Тестирование и бенчмарки") {
+        Component(unit_tests, "Unit Tests", "1,500+ строк", "Модульные тесты всех компонентов")
+        Component(integration_tests, "Integration Tests", "800+ строк", "Интеграционные тесты с libp2p")
+        Component(benchmarks, "Performance Benchmarks", "1,000+ строк", "Бенчмарки сетевой производительности")
+    }
+}
+
+System_Ext(libp2p, "libp2p Network", "Базовый P2P транспорт")
+System_Ext(prometheus, "Prometheus", "Система метрик")
+System_Ext(ipfs_network, "IPFS Network", "Внешние IPFS узлы")
+
+' Взаимодействия Task 4.1
+Rel(adaptive_conn_mgr, load_monitor, "Получает нагрузку", "GetCurrentLoad()")
+Rel(adaptive_conn_mgr, cluster_pool, "Управляет кластером", "AddClusterPeer()")
+Rel(adaptive_conn_mgr, libp2p, "Применяет лимиты", "ConnManager API")
+
+' Взаимодействия Task 4.2
+Rel(quality_tracker, latency_monitor, "Получает латентность", "MeasureLatency()")
+Rel(quality_tracker, route_optimizer, "Передает плохие соединения", "FindAlternatives()")
+Rel(route_optimizer, adaptive_conn_mgr, "Получает список соединений", "GetConnections()")
+
+' Взаимодействия Task 4.3
+Rel(buffer_manager, bandwidth_monitor, "Получает пропускную способность", "GetBandwidth()")
+Rel(buffer_manager, keepalive_mgr, "Управляет keep-alive", "EnableKeepAlive()")
+Rel(buffer_manager, slow_detector, "Обнаруживает медленные", "RecordLatency()")
+
+' Интеграция между задачами
+Rel(adaptive_conn_mgr, quality_tracker, "Получает качество", "GetConnectionQuality()")
+Rel(quality_tracker, buffer_manager, "Передает метрики", "UpdateQuality()")
+Rel(buffer_manager, adaptive_conn_mgr, "Координирует оптимизацию", "OptimizeConnections()")
+
+' Тестирование
+Rel(unit_tests, adaptive_conn_mgr, "Тестирует", "Go testing")
+Rel(unit_tests, quality_tracker, "Тестирует", "Go testing")
+Rel(unit_tests, buffer_manager, "Тестирует", "Go testing")
+Rel(integration_tests, libp2p, "Интеграционные тесты", "Real connections")
+Rel(benchmarks, prometheus, "Метрики производительности", "Benchmark results")
+
+' Внешние взаимодействия
+Rel(libp2p, ipfs_network, "P2P соединения", "Bitswap protocol")
+Rel_Back(prometheus, adaptive_conn_mgr, "Собирает метрики", "HTTP metrics")
+Rel_Back(prometheus, buffer_manager, "Собирает метрики", "HTTP metrics")
+
+note right of task41
+  **Производительность:**
+  • Адаптация: ~1M ops/sec
+  • Обновление качества: ~5M ops/sec
+  • Масштабируемость: до 10K соединений
+end note
+
+note right of task42
+  **Алгоритмы качества:**
+  • Латентность: 40% веса
+  • Пропускная способность: 30% веса
+  • Частота ошибок: 30% веса
+  • Экспоненциальное сглаживание α=0.3
+end note
+
+note right of task43
+  **BDP оптимизация:**
+  • bdp = latency × bandwidth
+  • Лимиты: 4KB - 1MB
+  • Keep-alive: адаптивные интервалы
+  • Обнаружение медленных: 500ms порог
+end note
+
+@enduml

@@ -1,0 +1,73 @@
+{
+  "test_configurations": {
+    "basic": {
+      "node_count": 3,
+      "block_count": 50,
+      "concurrent_requests": 25,
+      "test_duration": "10s",
+      "network_latency": "10ms",
+      "failure_rate": 0.0,
+      "enable_metrics": true,
+      "enable_circuit_breaker": false,
+      "enable_priority": false
+    },
+    "performance": {
+      "node_count": 5,
+      "block_count": 200,
+      "concurrent_requests": 100,
+      "test_duration": "30s",
+      "network_latency": "50ms",
+      "failure_rate": 0.05,
+      "enable_metrics": true,
+      "enable_circuit_breaker": true,
+      "enable_priority": true
+    },
+    "fault_tolerance": {
+      "node_count": 6,
+      "block_count": 100,
+      "concurrent_requests": 75,
+      "test_duration": "20s",
+      "network_latency": "100ms",
+      "failure_rate": 0.2,
+      "enable_metrics": true,
+      "enable_circuit_breaker": true,
+      "enable_priority": true
+    },
+    "stress": {
+      "node_count": 10,
+      "block_count": 500,
+      "concurrent_requests": 300,
+      "test_duration": "60s",
+      "network_latency": "25ms",
+      "failure_rate": 0.1,
+      "enable_metrics": true,
+      "enable_circuit_breaker": true,
+      "enable_priority": true
+    }
+  },
+  "alert_thresholds": {
+    "cpu_warning": 70.0,
+    "cpu_critical": 90.0,
+    "memory_warning": 0.8,
+    "memory_critical": 0.95,
+    "disk_warning": 0.85,
+    "disk_critical": 0.95,
+    "response_time_warning": "100ms",
+    "response_time_critical": "500ms",
+    "error_rate_warning": 0.05,
+    "error_rate_critical": 0.15
+  },
+  "prometheus_metrics": {
+    "enabled": true,
+    "port": 9090,
+    "path": "/metrics",
+    "scrape_interval": "15s"
+  },
+  "ci_cd_settings": {
+    "timeout": "300s",
+    "parallel_jobs": 4,
+    "retry_attempts": 3,
+    "artifact_retention_days": 7,
+    "notification_channels": ["github", "slack"]
+  }
+}

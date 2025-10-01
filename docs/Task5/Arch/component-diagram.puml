@@ -1,0 +1,74 @@
+@startuml Task5-Component-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Система мониторинга производительности - Диаграмма компонентов
+
+Container_Boundary(performance_monitor, "Performance Monitor") {
+    Component(metrics_collector, "Metrics Collector", "Go Component", "Собирает метрики из различных источников")
+    Component(prometheus_exporter, "Prometheus Exporter", "Go Component", "Экспортирует метрики в формате Prometheus")
+    Component(bitswap_monitor, "Bitswap Monitor", "Go Component", "Мониторинг метрик Bitswap")
+    Component(blockstore_monitor, "Blockstore Monitor", "Go Component", "Мониторинг метрик Blockstore")
+    Component(network_monitor, "Network Monitor", "Go Component", "Мониторинг сетевых метрик")
+}
+
+Container_Boundary(bottleneck_analyzer, "Bottleneck Analyzer") {
+    Component(trend_analyzer, "Trend Analyzer", "Go Component", "Анализ трендов в метриках")
+    Component(anomaly_detector, "Anomaly Detector", "Go Component", "Обнаружение аномалий в производительности")
+    Component(recommendation_engine, "Recommendation Engine", "Go Component", "Генерация рекомендаций по оптимизации")
+    Component(performance_profiler, "Performance Profiler", "Go Component", "Профилирование производительности компонентов")
+}
+
+Container_Boundary(alert_manager, "Alert Manager") {
+    Component(alert_generator, "Alert Generator", "Go Component", "Генерация алертов на основе правил")
+    Component(notification_sender, "Notification Sender", "Go Component", "Отправка уведомлений")
+    Component(structured_logger, "Structured Logger", "Go Component", "Структурированное логирование")
+    Component(request_tracer, "Request Tracer", "Go Component", "Трассировка запросов при превышении SLA")
+}
+
+Container_Boundary(auto_tuner, "Auto Tuner") {
+    Component(ml_predictor, "ML Predictor", "Go Component", "Предсказание оптимальных параметров с помощью ML")
+    Component(config_optimizer, "Config Optimizer", "Go Component", "Оптимизация конфигурации")
+    Component(safe_applier, "Safe Applier", "Go Component", "Безопасное применение изменений")
+    Component(rollback_manager, "Rollback Manager", "Go Component", "Откат изменений при проблемах")
+}
+
+System_Ext(boxo_components, "Boxo Components")
+System_Ext(prometheus, "Prometheus")
+System_Ext(external_systems, "External Systems")
+
+' Performance Monitor relationships
+Rel(bitswap_monitor, boxo_components, "Собирает метрики Bitswap")
+Rel(blockstore_monitor, boxo_components, "Собирает метрики Blockstore")
+Rel(network_monitor, boxo_components, "Собирает сетевые метрики")
+Rel(metrics_collector, bitswap_monitor, "Агрегирует метрики")
+Rel(metrics_collector, blockstore_monitor, "Агрегирует метрики")
+Rel(metrics_collector, network_monitor, "Агрегирует метрики")
+Rel(prometheus_exporter, metrics_collector, "Получает метрики")
+Rel(prometheus_exporter, prometheus, "Экспортирует метрики")
+
+' Bottleneck Analyzer relationships
+Rel(trend_analyzer, metrics_collector, "Анализирует тренды")
+Rel(anomaly_detector, metrics_collector, "Обнаруживает аномалии")
+Rel(performance_profiler, boxo_components, "Профилирует компоненты")
+Rel(recommendation_engine, trend_analyzer, "Использует анализ трендов")
+Rel(recommendation_engine, anomaly_detector, "Использует детекцию аномалий")
+Rel(recommendation_engine, performance_profiler, "Использует профилирование")
+
+' Alert Manager relationships
+Rel(alert_generator, trend_analyzer, "Получает данные трендов")
+Rel(alert_generator, anomaly_detector, "Получает данные аномалий")
+Rel(notification_sender, alert_generator, "Получает алерты")
+Rel(notification_sender, external_systems, "Отправляет уведомления")
+Rel(structured_logger, alert_generator, "Логирует алерты")
+Rel(request_tracer, boxo_components, "Трассирует запросы")
+
+' Auto Tuner relationships
+Rel(ml_predictor, metrics_collector, "Анализирует исторические данные")
+Rel(config_optimizer, ml_predictor, "Получает предсказания")
+Rel(config_optimizer, recommendation_engine, "Получает рекомендации")
+Rel(safe_applier, config_optimizer, "Применяет оптимизации")
+Rel(safe_applier, boxo_components, "Изменяет конфигурацию")
+Rel(rollback_manager, safe_applier, "Мониторит изменения")
+Rel(rollback_manager, boxo_components, "Откатывает изменения")
+
+@enduml

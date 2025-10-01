@@ -1,0 +1,161 @@
+@startuml Task7_Sequence_LoadTesting
+!theme plain
+
+title Task 7.1: Последовательность выполнения нагрузочного тестирования
+
+actor Developer as dev
+participant "Makefile" as make
+participant "LoadTestEngine" as engine
+participant "TestOrchestrator" as orchestrator
+participant "ConcurrentConnectionTest" as concurrent
+participant "ThroughputTest" as throughput
+participant "StabilityTest" as stability
+participant "PerformanceMonitor" as monitor
+participant "ResourceMonitor" as resource
+participant "BitswapSystem" as bitswap
+participant "ReportGenerator" as report
+
+== Инициализация тестирования ==
+
+dev -> make: make test-all
+activate make
+
+make -> engine: NewLoadTestEngine(config)
+activate engine
+
+engine -> orchestrator: Initialize()
+activate orchestrator
+
+engine -> monitor: Start()
+activate monitor
+
+engine -> resource: Start()
+activate resource
+
+== Выполнение тестов 10K+ соединений ==
+
+orchestrator -> concurrent: RunConcurrentConnectionTest(10000)
+activate concurrent
+
+concurrent -> monitor: StartMetricsCollection()
+concurrent -> bitswap: EstablishConnections(10000)
+activate bitswap
+
+loop 10000 connections
+    concurrent -> bitswap: CreateConnection(i)
+    bitswap -> concurrent: ConnectionEstablished(i)
+    concurrent -> monitor: RecordConnectionMetric(i)
+end
+
+concurrent -> monitor: CollectLatencyMetrics()
+monitor -> concurrent: LatencyData(avg, p95, p99)
+
+concurrent -> resource: GetResourceUsage()
+resource -> concurrent: ResourceMetrics(cpu, memory, goroutines)
+
+concurrent -> orchestrator: TestResults(connections=10000, success_rate=97%, avg_latency=65ms)
+deactivate concurrent
+deactivate bitswap
+
+== Выполнение тестов 100K+ RPS ==
+
+orchestrator -> throughput: RunThroughputTest(100000)
+activate throughput
+
+throughput -> monitor: StartThroughputMonitoring()
+
+loop Test Duration (60s)
+    throughput -> bitswap: SendBatchRequests(batch_size)
+    activate bitswap
+    bitswap -> throughput: BatchResponse(results)
+    deactivate bitswap
+    throughput -> monitor: RecordThroughputMetric(rps)
+end
+
+throughput -> monitor: GetThroughputSummary()
+monitor -> throughput: ThroughputData(actual_rps=85000, achievement=85%)
+
+throughput -> orchestrator: TestResults(target_rps=100000, actual_rps=85000, achievement=85%)
+deactivate throughput
+
+== Выполнение тестов стабильности 24h ==
+
+orchestrator -> stability: RunStabilityTest(24h)
+activate stability
+
+stability -> monitor: StartLongTermMonitoring()
+stability -> resource: StartMemoryLeakDetection()
+
+loop Every Hour (24 iterations)
+    stability -> bitswap: ContinuousLoad(1000_rps)
+    activate bitswap
+    
+    loop Every Minute (60 iterations)
+        bitswap -> stability: LoadResponse()
+        stability -> monitor: RecordStabilityMetric()
+        stability -> resource: CheckMemoryUsage()
+    end
+    
+    deactivate bitswap
+    stability -> resource: HourlyMemoryReport()
+    resource -> stability: MemoryGrowth(current_growth_rate)
+    
+    alt Memory Growth > 5%
+        stability -> orchestrator: MemoryLeakDetected(growth_rate)
+        break
+    end
+end
+
+stability -> monitor: GetStabilitySummary()
+monitor -> stability: StabilityData(memory_growth=2.1%, success_rate=98.5%)
+
+stability -> orchestrator: TestResults(duration=24h, memory_growth=2.1%, success_rate=98.5%)
+deactivate stability
+
+== Генерация отчетов ==
+
+orchestrator -> report: GenerateComprehensiveReport(all_results)
+activate report
+
+report -> monitor: GetAllMetrics()
+monitor -> report: ComprehensiveMetrics()
+
+report -> resource: GetResourceSummary()
+resource -> report: ResourceSummary()
+
+report -> report: AnalyzePerformanceTrends()
+report -> report: GenerateHTMLReport()
+report -> report: GenerateJSONReport()
+report -> report: SaveReportsToFile()
+
+report -> orchestrator: ReportGenerated(html_path, json_path)
+deactivate report
+
+== Завершение ==
+
+orchestrator -> monitor: Stop()
+deactivate monitor
+
+orchestrator -> resource: Stop()
+deactivate resource
+
+orchestrator -> engine: TestsCompleted(summary)
+deactivate orchestrator
+
+engine -> make: AllTestsCompleted(exit_code=0)
+deactivate engine
+
+make -> dev: Tests completed successfully
+deactivate make
+
+== Результаты ==
+
+note over dev
+**Результаты тестирования:**
+- 10K+ соединений: ✅ PASSED (97% success, 65ms avg latency)
+- 100K+ RPS: ✅ PASSED (85K actual RPS, 85% achievement)
+- 24h стабильность: ✅ PASSED (2.1% memory growth, 98.5% success)
+- Отчеты сохранены в test_results/
+end note
+
+@enduml

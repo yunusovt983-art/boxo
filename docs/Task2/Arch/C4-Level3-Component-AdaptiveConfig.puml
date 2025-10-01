@@ -1,0 +1,64 @@
+@startuml Task2-Component-AdaptiveConfig
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Task 2.1: Adaptive Configuration Management - Диаграмма компонентов
+
+Container(bitswap_core, "Bitswap Core", "Go")
+Container(load_monitor, "Load Monitor", "Go")
+Container(metrics_collector, "Metrics Collector", "Go")
+
+Container_Boundary(adaptive_config, "Task 2.1: Adaptive Configuration Management") {
+    Component(config_manager, "AdaptiveBitswapConfig", "Go Struct", "Центральная конфигурация с thread-safe операциями")
+    Component(connection_manager, "AdaptiveConnectionManager", "Go Service", "Управление соединениями с адаптивными лимитами")
+    Component(adaptation_engine, "Adaptation Engine", "Go Logic", "Алгоритмы автоматической адаптации параметров")
+    Component(config_validator, "Configuration Validator", "Go Logic", "Валидация и применение изменений конфигурации")
+    
+    ComponentDb(config_state, "Configuration State", "Memory", "Текущие значения всех параметров")
+    ComponentDb(connection_info, "Connection Info", "Map", "Информация о соединениях по пирам")
+    ComponentDb(adaptation_history, "Adaptation History", "Ring Buffer", "История изменений конфигурации")
+}
+
+Rel(bitswap_core, config_manager, "Получение текущих лимитов")
+Rel(bitswap_core, connection_manager, "Управление соединениями с пирами")
+
+Rel(config_manager, adaptation_engine, "Запуск адаптации каждые 30с")
+Rel(config_manager, config_validator, "Валидация новых значений")
+Rel(config_manager, config_state, "Чтение/запись параметров")
+
+Rel(connection_manager, connection_info, "Отслеживание метрик по пирам")
+Rel(connection_manager, config_manager, "Получение лимитов для пиров")
+
+Rel(adaptation_engine, load_monitor, "Получение метрик производительности")
+Rel(adaptation_engine, adaptation_history, "Запись истории адаптаций")
+Rel(adaptation_engine, config_state, "Обновление параметров")
+
+Rel(config_validator, config_state, "Применение валидированных изменений")
+
+Rel(config_manager, metrics_collector, "Метрики конфигурации")
+Rel(connection_manager, metrics_collector, "Метрики соединений")
+Rel(adaptation_engine, metrics_collector, "Метрики адаптации")
+
+note right of config_manager
+**Ключевые параметры:**
+• MaxOutstandingBytesPerPeer: 1MB-100MB
+• WorkerCount: 128-2048
+• BatchSize: 100-1000
+• Адаптация каждые 30 секунд
+end note
+
+note right of adaptation_engine
+**Алгоритм адаптации:**
+• LoadFactor = f(ResponseTime, P95, RPS, Outstanding)
+• ScaleUp при LoadFactor > 0.8
+• ScaleDown при LoadFactor < 0.3
+• Факторы масштабирования: 1.5x / 0.8x
+end note
+
+note right of connection_manager
+**Per-peer адаптация:**
+• Снижение лимитов для медленных пиров
+• Учет error rate при расчете лимитов
+• Минимальный лимит 256KB
+end note
+
+@enduml

@@ -1,0 +1,25 @@
+@startuml Task6-Context-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title Task 6 - Resource Management and Fault Tolerance - Context Diagram
+
+Person(admin, "System Administrator", "Monitors and configures resource management")
+Person(developer, "Developer", "Integrates with monitoring APIs")
+
+System_Boundary(boxo, "Boxo IPFS Node") {
+    System(task6, "Task 6 - Resource Management", "Comprehensive resource monitoring, graceful degradation, and auto-scaling system")
+}
+
+System_Ext(prometheus, "Prometheus", "Metrics collection and alerting")
+System_Ext(grafana, "Grafana", "Monitoring dashboards")
+System_Ext(alertmanager, "AlertManager", "Alert routing and notifications")
+System_Ext(external_systems, "External Systems", "Third-party monitoring and logging")
+
+Rel(admin, task6, "Configures thresholds and rules")
+Rel(developer, task6, "Uses monitoring APIs")
+Rel(task6, prometheus, "Exports metrics")
+Rel(task6, alertmanager, "Sends alerts")
+Rel(prometheus, grafana, "Provides data")
+Rel(task6, external_systems, "Integrates via callbacks")
+
+@enduml

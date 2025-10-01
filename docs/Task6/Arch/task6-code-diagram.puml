@@ -1,0 +1,248 @@
+@startuml Task6-Code-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Task 6 - Resource Management and Fault Tolerance - Code Level Diagram
+
+package "monitoring" {
+    
+    package "Resource Monitoring (Task 6.1)" {
+        interface ResourceMonitorInterface {
+            +GetThresholds() ResourceMonitorThresholds
+            +GetCurrentStatus() map[string]interface{}
+        }
+        
+        class ResourceMonitor {
+            -collector ResourceCollector
+            -thresholds ResourceMonitorThresholds
+            -history []ResourceSnapshot
+            -alertCallback AlertCallback
+            +Start(ctx context.Context) error
+            +Stop() error
+            +ForceCollection() error
+            +GetResourceHistory() []ResourceSnapshot
+            +PredictResourceUsage() ResourcePrediction
+        }
+        
+        interface MetricCollector {
+            +CollectMetrics() map[string]interface{}
+            +GetMetricNames() []string
+        }
+        
+        class ResourceCollector {
+            -cpuUsage float64
+            -memoryStats MemoryStats
+            -diskStats DiskStats
+            +UpdateCPUUsage(usage float64)
+            +GetMemoryPressure() float64
+            +GetDiskPressure() float64
+            +ForceGC()
+        }
+        
+        struct ResourceSnapshot {
+            +Timestamp time.Time
+            +CPUUsage float64
+            +MemoryUsage uint64
+            +DiskUsage uint64
+            +GoroutineCount int
+        }
+    }
+    
+    package "Graceful Degradation (Task 6.2)" {
+        interface GracefulDegradationManager {
+            +Start(ctx context.Context) error
+            +Stop() error
+            +SetDegradationRules(rules []DegradationRule) error
+            +GetCurrentDegradationLevel() DegradationLevel
+            +ForceRecovery() error
+            +SetRecoveryCallback(callback RecoveryCallback) error
+        }
+        
+        class gracefulDegradationManager {
+            -performanceMonitor PerformanceMonitor
+            -resourceMonitor *ResourceMonitor
+            -currentLevel DegradationLevel
+            -rules []DegradationRule
+            -actions map[string]DegradationAction
+            -isRunning bool
+            +evaluateDegradation(ctx context.Context)
+            +applyDegradationActions(level DegradationLevel)
+            +recoverFromDegradation()
+        }
+        
+        interface DegradationAction {
+            +Execute(level DegradationLevel, params map[string]interface{}) error
+            +Recover() error
+            +GetActionName() string
+            +IsReversible() bool
+        }
+        
+        enum DegradationLevel {
+            DegradationNone
+            DegradationLight
+            DegradationModerate
+            DegradationSevere
+            DegradationCritical
+        }
+        
+        struct DegradationRule {
+            +ID string
+            +Name string
+            +Condition AlertCondition
+            +Threshold interface{}
+            +Level DegradationLevel
+            +Actions []string
+            +Priority int
+        }
+    }
+    
+    package "Auto Scaling (Task 6.3)" {
+        interface AutoScaler {
+            +Start(ctx context.Context) error
+            +Stop() error
+            +SetScalingRules(rules []ScalingRule) error
+            +RegisterScalableComponent(name string, component ScalableComponent) error
+            +ForceScale(component string, direction ScalingDirection, factor float64) error
+            +IsolateComponent(component string, reason string) error
+            +RestoreComponent(component string) error
+            +GetScalingStatus() ScalingStatus
+        }
+        
+        class autoScaler {
+            -performanceMonitor PerformanceMonitor
+            -resourceMonitor ResourceMonitorInterface
+            -rules []ScalingRule
+            -components map[string]ScalableComponent
+            -isolatedComponents map[string]*IsolatedComponent
+            -scalingHistory []ScalingEvent
+            -lastScalingTime map[string]time.Time
+            +evaluateScaling(ctx context.Context)
+            +applyScaling(ctx context.Context, rule ScalingRule, metrics *PerformanceMetrics)
+            +isInCooldown(component string, cooldown time.Duration) bool
+        }
+        
+        interface ScalableComponent {
+            +GetCurrentScale() int
+            +SetScale(ctx context.Context, scale int) error
+            +GetScaleRange() (min, max int)
+            +GetComponentName() string
+            +IsHealthy() bool
+            +GetMetrics() map[string]interface{}
+        }
+        
+        class WorkerPoolComponent {
+            -currentScale int
+            -minScale int
+            -maxScale int
+            -activeWorkers int
+            -queuedTasks int64
+            +UpdateMetrics(queuedTasks, processedTasks int64, avgLatency time.Duration)
+        }
+        
+        class ConnectionPoolComponent {
+            -currentScale int
+            -activeConnections int
+            -idleConnections int
+            -totalRequests int64
+            +UpdateMetrics(activeConns, idleConns int, totalReqs, failedReqs int64, avgLatency time.Duration)
+        }
+        
+        class BatchProcessorComponent {
+            -currentScale int
+            -activeBatches int
+            -queuedBatches int
+            -averageBatchSize int
+            +UpdateMetrics(activeBatches, queuedBatches int, processedBatches, failedBatches int64, avgBatchSize int, avgLatency time.Duration)
+        }
+        
+        enum ScalingDirection {
+            ScaleUp
+            ScaleDown
+            ScaleStable
+        }
+        
+        struct ScalingRule {
+            +ID string
+            +Component string
+            +Metric string
+            +Condition AlertCondition
+            +Threshold interface{}
+            +Direction ScalingDirection
+            +ScaleFactor float64
+            +MinValue int
+            +MaxValue int
+            +Cooldown time.Duration
+            +Priority int
+        }
+        
+        struct ScalingEvent {
+            +Timestamp time.Time
+            +Component string
+            +Direction ScalingDirection
+            +FromScale int
+            +ToScale int
+            +ScaleFactor float64
+            +Trigger string
+            +Success bool
+            +Error string
+        }
+    }
+    
+    package "Shared Components" {
+        interface PerformanceMonitor {
+            +CollectMetrics() *PerformanceMetrics
+            +StartCollection(ctx context.Context, interval time.Duration) error
+            +StopCollection() error
+            +RegisterCollector(name string, collector MetricCollector) error
+            +GetPrometheusRegistry() *prometheus.Registry
+        }
+        
+        struct PerformanceMetrics {
+            +ResourceMetrics ResourceStats
+            +BitswapMetrics BitswapStats
+            +NetworkMetrics NetworkStats
+            +Timestamp time.Time
+        }
+        
+        interface AlertNotifier {
+            +SendAlert(alert Alert) error
+            +IsHealthy() bool
+            +GetNotifierType() string
+        }
+        
+        class StructuredLogger {
+            -outputs []LogOutput
+            -hooks []LogHook
+            +Info(message string, fields ...slog.Attr)
+            +Error(message string, fields ...slog.Attr)
+            +WithComponent(component string) *StructuredLogger
+            +WithFields(fields map[string]interface{}) *StructuredLogger
+        }
+    }
+}
+
+' Relationships
+ResourceMonitor ..|> ResourceMonitorInterface
+ResourceMonitor *-- ResourceCollector
+ResourceCollector ..|> MetricCollector
+
+gracefulDegradationManager ..|> GracefulDegradationManager
+gracefulDegradationManager *-- DegradationRule
+gracefulDegradationManager o-- DegradationAction
+
+autoScaler ..|> AutoScaler
+autoScaler *-- ScalingRule
+autoScaler o-- ScalableComponent
+WorkerPoolComponent ..|> ScalableComponent
+ConnectionPoolComponent ..|> ScalableComponent
+BatchProcessorComponent ..|> ScalableComponent
+
+' Cross-package relationships
+gracefulDegradationManager --> ResourceMonitorInterface
+gracefulDegradationManager --> PerformanceMonitor
+autoScaler --> ResourceMonitorInterface
+autoScaler --> PerformanceMonitor
+ResourceMonitor --> AlertNotifier
+gracefulDegradationManager --> StructuredLogger
+autoScaler --> StructuredLogger
+
+@enduml

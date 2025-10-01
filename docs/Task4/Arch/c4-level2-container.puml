@@ -1,0 +1,77 @@
+@startuml Task4-Container-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Task 4: Сетевая оптимизация - Диаграмма контейнеров
+
+Person(admin, "Администратор", "Управляет кластером")
+Person(developer, "Разработчик", "Использует IPFS API")
+
+System_Boundary(boxo_system, "Оптимизированная система Boxo") {
+    
+    Container(adaptive_conn_mgr, "Адаптивный менеджер соединений", "Go, Task 4.1", "Управляет динамическими лимитами соединений, кластерными пулами и адаптацией к нагрузке")
+    
+    Container(quality_monitor, "Монитор качества соединений", "Go, Task 4.2", "Отслеживает метрики соединений, измеряет латентность и пропускную способность")
+    
+    Container(buffer_keepalive, "Менеджер буферизации и Keep-Alive", "Go, Task 4.3", "Оптимизирует размеры буферов и управляет keep-alive соединениями")
+    
+    Container(network_layer, "Сетевой слой libp2p", "Go, libp2p", "Базовый транспортный слой для P2P соединений")
+    
+    Container(metrics_collector, "Сборщик метрик", "Go, Prometheus", "Собирает и экспортирует метрики производительности")
+    
+    Container(config_manager, "Менеджер конфигурации", "Go", "Управляет динамической конфигурацией и адаптивными настройками")
+}
+
+System_Ext(ipfs_network, "IPFS сеть", "Внешние IPFS узлы")
+System_Ext(monitoring_sys, "Мониторинг", "Prometheus/Grafana")
+
+' Взаимодействие пользователей
+Rel(admin, adaptive_conn_mgr, "Настраивает лимиты", "Config API")
+Rel(admin, metrics_collector, "Просматривает метрики", "HTTP")
+Rel(developer, network_layer, "Использует для обмена", "libp2p API")
+
+' Внутренние взаимодействия
+Rel(adaptive_conn_mgr, quality_monitor, "Получает метрики качества", "Go interface")
+Rel(adaptive_conn_mgr, buffer_keepalive, "Координирует оптимизацию", "Go interface")
+Rel(quality_monitor, buffer_keepalive, "Передает данные о производительности", "Go interface")
+
+Rel(adaptive_conn_mgr, network_layer, "Управляет соединениями", "libp2p API")
+Rel(quality_monitor, network_layer, "Измеряет производительность", "libp2p API")
+Rel(buffer_keepalive, network_layer, "Оптимизирует буферы", "libp2p API")
+
+Rel(adaptive_conn_mgr, config_manager, "Получает настройки", "Config interface")
+Rel(quality_monitor, config_manager, "Получает пороги", "Config interface")
+Rel(buffer_keepalive, config_manager, "Получает параметры", "Config interface")
+
+Rel(adaptive_conn_mgr, metrics_collector, "Отправляет метрики соединений", "Metrics API")
+Rel(quality_monitor, metrics_collector, "Отправляет метрики качества", "Metrics API")
+Rel(buffer_keepalive, metrics_collector, "Отправляет метрики буферизации", "Metrics API")
+
+' Внешние взаимодействия
+Rel(network_layer, ipfs_network, "P2P соединения", "libp2p/Bitswap")
+Rel(metrics_collector, monitoring_sys, "Экспорт метрик", "Prometheus")
+
+note right of adaptive_conn_mgr
+  **Task 4.1 - Адаптивный менеджер:**
+  • Динамические лимиты HighWater/LowWater
+  • Автоматическая настройка GracePeriod
+  • Пулы кластерных соединений
+  • Адаптация к нагрузке
+end note
+
+note right of quality_monitor
+  **Task 4.2 - Мониторинг качества:**
+  • Структура ConnectionQuality
+  • Измерение латентности и пропускной способности
+  • Автоматическое переключение маршрутов
+  • Обнаружение проблемных соединений
+end note
+
+note right of buffer_keepalive
+  **Task 4.3 - Буферизация и Keep-Alive:**
+  • Адаптивные размеры буферов (BDP)
+  • Интеллектуальное управление keep-alive
+  • Обнаружение медленных соединений
+  • Механизм обхода проблемных маршрутов
+end note
+
+@enduml

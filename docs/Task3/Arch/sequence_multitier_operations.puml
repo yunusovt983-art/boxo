@@ -1,0 +1,122 @@
+@startuml Task3_MultiTier_Sequence
+title Task 3.1: Последовательность операций многоуровневого кэширования
+
+actor Client as C
+participant "MultiTierBlockstore" as MTB
+participant "MemoryTier" as MEM
+participant "SSDTier" as SSD
+participant "HDDTier" as HDD
+participant "AccessTracker" as AT
+participant "PromotionEngine" as PE
+participant "MemoryMonitor" as MM
+
+== Операция Get с автоматическим продвижением ==
+
+C -> MTB: Get(ctx, cid)
+activate MTB
+
+MTB -> MEM: Has(ctx, cid)
+activate MEM
+MEM --> MTB: false
+deactivate MEM
+
+MTB -> SSD: Has(ctx, cid)
+activate SSD
+SSD --> MTB: false
+deactivate SSD
+
+MTB -> HDD: Get(ctx, cid)
+activate HDD
+HDD --> MTB: block
+deactivate HDD
+
+MTB -> AT: updateAccessInfo(cid, HDDTier, size)
+activate AT
+AT -> AT: increment access count
+AT -> AT: update last access time
+AT --> MTB: updated
+deactivate AT
+
+MTB -> PE: considerPromotion(ctx, cid)
+activate PE
+PE -> AT: getAccessInfo(cid)
+AT --> PE: accessInfo
+PE -> PE: check promotion threshold
+PE -> MTB: promoteToSSD = true
+deactivate PE
+
+MTB -> SSD: Put(ctx, block)
+activate SSD
+SSD --> MTB: success
+deactivate SSD
+
+MTB -> AT: updateAccessInfo(cid, SSDTier, size)
+activate AT
+AT --> MTB: updated
+deactivate AT
+
+MTB --> C: block
+deactivate MTB
+
+== Операция Put с проверкой памяти ==
+
+C -> MTB: Put(ctx, block)
+activate MTB
+
+MTB -> MM: getCurrentPressure()
+activate MM
+MM --> MTB: MemoryPressureLevel.Low
+deactivate MM
+
+MTB -> MEM: Put(ctx, block)
+activate MEM
+MEM -> MEM: check capacity
+MEM --> MTB: success
+deactivate MEM
+
+MTB -> AT: updateAccessInfo(cid, MemoryTier, size)
+activate AT
+AT --> MTB: updated
+deactivate AT
+
+MTB --> C: success
+deactivate MTB
+
+== Автоматическая очистка при высоком давлении памяти ==
+
+MM -> MM: checkMemoryPressure()
+activate MM
+MM -> MM: pressure = High
+MM -> MTB: onMemoryPressure(High)
+deactivate MM
+
+activate MTB
+MTB -> MTB: makeSpace(MemoryTier, requiredSize)
+MTB -> AT: getLRUCandidates(MemoryTier)
+activate AT
+AT --> MTB: candidateList
+deactivate AT
+
+loop for each candidate
+    MTB -> PE: demoteBlock(cid)
+    activate PE
+    PE -> SSD: Put(ctx, block)
+    activate SSD
+    SSD --> PE: success
+    deactivate SSD
+    PE -> MEM: DeleteBlock(ctx, cid)
+    activate MEM
+    MEM --> PE: success
+    deactivate MEM
+    PE -> AT: updateAccessInfo(cid, SSDTier, size)
+    activate AT
+    AT --> PE: updated
+    deactivate AT
+    PE --> MTB: demoted
+    deactivate PE
+end
+
+MTB --> MM: cleanup completed
+deactivate MTB
+
+@enduml

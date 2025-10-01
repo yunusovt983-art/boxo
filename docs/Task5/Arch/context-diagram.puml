@@ -1,0 +1,32 @@
+@startuml Task5-Context-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title Система мониторинга и метрик производительности - Контекстная диаграмма
+
+Person(admin, "Системный администратор", "Управляет и мониторит производительность IPFS кластера")
+Person(developer, "Разработчик", "Анализирует метрики производительности и оптимизирует код")
+Person(operator, "DevOps инженер", "Настраивает алерты и автоматизирует операции")
+
+System(monitoring_system, "Система мониторинга производительности", "Собирает метрики, анализирует узкие места, генерирует алерты и автоматически оптимизирует параметры Boxo")
+
+System_Ext(boxo_core, "Boxo Core", "Основные компоненты Boxo: Bitswap, Blockstore, Network")
+System_Ext(prometheus, "Prometheus", "Система сбора и хранения метрик")
+System_Ext(grafana, "Grafana", "Система визуализации метрик и дашбордов")
+System_Ext(alertmanager, "AlertManager", "Система управления алертами")
+System_Ext(ipfs_cluster, "IPFS Cluster", "Кластер IPFS узлов")
+
+Rel(admin, monitoring_system, "Мониторит производительность", "HTTPS/WebUI")
+Rel(developer, monitoring_system, "Анализирует метрики", "HTTPS/API")
+Rel(operator, monitoring_system, "Настраивает алерты", "HTTPS/WebUI")
+
+Rel(monitoring_system, boxo_core, "Собирает метрики", "Go interfaces")
+Rel(monitoring_system, prometheus, "Экспортирует метрики", "HTTP/Prometheus format")
+Rel(monitoring_system, grafana, "Предоставляет данные", "HTTP/JSON")
+Rel(monitoring_system, alertmanager, "Отправляет алерты", "HTTP/Webhook")
+Rel(monitoring_system, ipfs_cluster, "Оптимизирует конфигурацию", "HTTP/API")
+
+Rel(prometheus, grafana, "Предоставляет метрики", "PromQL")
+Rel(alertmanager, admin, "Уведомления", "Email/Slack")
+Rel(alertmanager, operator, "Уведомления", "Email/Slack")
+
+@enduml

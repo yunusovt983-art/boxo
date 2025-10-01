@@ -1,0 +1,30 @@
+@startuml Task2_Level1_Context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title Task 2: Bitswap High-Throughput Optimization - System Context
+
+Person(user, "IPFS User", "User requesting blocks from IPFS network")
+Person(peer, "IPFS Peer", "Other IPFS nodes providing blocks")
+
+System_Boundary(ipfs, "IPFS Node") {
+    System(bitswap, "Enhanced Bitswap System", "High-performance block exchange with adaptive optimization")
+}
+
+System_Ext(network, "IPFS Network", "Distributed network of IPFS nodes")
+System_Ext(blockstore, "Local Blockstore", "Local storage for IPFS blocks")
+
+Rel(user, bitswap, "Requests blocks", "GetBlock/GetBlocks API")
+Rel(bitswap, network, "Exchanges blocks", "BitSwap Protocol")
+Rel(bitswap, blockstore, "Stores/Retrieves blocks", "Blockstore API")
+Rel(peer, network, "Provides blocks", "BitSwap Protocol")
+
+note right of bitswap
+**Key Optimizations:**
+- Adaptive connection management
+- Request prioritization system  
+- Batch processing with worker pools
+- >1000 concurrent requests
+- <100ms P95 response time
+end note
+
+@enduml

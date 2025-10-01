@@ -1,0 +1,91 @@
+@startuml Task3_Level2_Container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Task 3: Оптимизированное блочное хранилище - Контейнерная диаграмма (Level 2)
+
+Person(developer, "Разработчик", "Использует API блочного хранилища")
+Person(admin, "Администратор", "Мониторит систему")
+
+System_Boundary(blockstore_system, "Оптимизированное блочное хранилище") {
+    
+    Container(multitier_cache, "MultiTier Cache", "Go", "Многоуровневая система кэширования с автоматическим управлением данными")
+    
+    Container(batch_io, "Batch I/O Manager", "Go", "Группировка и асинхронная обработка операций I/O")
+    
+    Container(streaming, "Streaming Handler", "Go", "Потоковая обработка больших блоков с сжатием и чанкингом")
+    
+    Container(memory_mgr, "Memory Manager", "Go", "Мониторинг памяти и graceful degradation")
+    
+    Container(core_blockstore, "Core Blockstore", "Go", "Базовый интерфейс блочного хранилища")
+    
+    Container(metrics, "Metrics Collector", "Go", "Сбор и экспорт метрик производительности")
+}
+
+ContainerDb(memory_tier, "Memory Tier", "RAM", "Быстрый кэш в памяти")
+ContainerDb(ssd_tier, "SSD Tier", "SSD", "Средний уровень кэширования")
+ContainerDb(hdd_tier, "HDD Tier", "HDD", "Долгосрочное хранение")
+
+System_Ext(prometheus, "Prometheus", "Система мониторинга метрик")
+System_Ext(ipfs_network, "IPFS Network", "Сеть IPFS узлов")
+
+' Взаимодействия пользователей
+Rel(developer, multitier_cache, "Put/Get блоки", "Go API")
+Rel(developer, batch_io, "Батчевые операции", "Go API")
+Rel(developer, streaming, "Потоковые операции", "Go API")
+
+Rel(admin, metrics, "Получает метрики", "HTTP")
+Rel(admin, memory_mgr, "Настраивает лимиты", "Config")
+
+' Внутренние взаимодействия
+Rel(multitier_cache, memory_mgr, "Проверяет давление памяти", "Go calls")
+Rel(multitier_cache, core_blockstore, "Делегирует операции", "Go interface")
+Rel(batch_io, core_blockstore, "Выполняет батчи", "Go interface")
+Rel(streaming, core_blockstore, "Сохраняет чанки", "Go interface")
+
+Rel(memory_mgr, multitier_cache, "Триггерит очистку кэша", "Callbacks")
+Rel(memory_mgr, metrics, "Отправляет метрики памяти", "Go calls")
+
+' Связи с хранилищами
+Rel(multitier_cache, memory_tier, "Кэширует горячие данные", "Memory access")
+Rel(multitier_cache, ssd_tier, "Кэширует теплые данные", "File I/O")
+Rel(multitier_cache, hdd_tier, "Хранит холодные данные", "File I/O")
+
+Rel(core_blockstore, hdd_tier, "Постоянное хранение", "File I/O")
+
+' Внешние связи
+Rel(metrics, prometheus, "Экспортирует метрики", "HTTP/Prometheus")
+Rel(core_blockstore, ipfs_network, "Синхронизация", "libp2p")
+
+note right of multitier_cache
+  **Task 3.1: MultiTier Cache**
+  • LRU с учетом частоты доступа
+  • Автоматическое продвижение/понижение
+  • Настраиваемые пороги для уровней
+  • Статистика по каждому уровню
+end note
+
+note right of batch_io
+  **Task 3.2: Batch I/O**
+  • Группировка операций по времени/размеру
+  • Асинхронная обработка с goroutines
+  • Транзакционные операции
+  • Retry механизмы
+end note
+
+note right of streaming
+  **Task 3.3: Streaming**
+  • Обработка блоков > 1MB
+  • Чанкинг больших файлов
+  • Адаптивное сжатие gzip
+  • Потоковая сборка без загрузки в память
+end note
+
+note right of memory_mgr
+  **Task 3.4: Memory Management**
+  • Мониторинг в реальном времени
+  • 5 уровней давления памяти
+  • Graceful degradation (4 уровня)
+  • Автоматическая очистка кэша
+end note
+
+@enduml

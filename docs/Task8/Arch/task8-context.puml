@@ -1,0 +1,38 @@
+@startuml task8-context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title System Context Diagram for Task 8 - Boxo High-Load Documentation & Integration
+
+Person(developer, "Developer", "Implements high-load IPFS applications using Boxo optimizations")
+Person(devops, "DevOps Engineer", "Deploys and manages IPFS-cluster environments")
+Person(sysadmin, "System Administrator", "Monitors and maintains production systems")
+
+System_Boundary(task8, "Task 8 - Documentation & Integration System") {
+    System(task8_1, "Task 8.1 - Documentation System", "Comprehensive configuration guides, deployment examples, troubleshooting, and migration documentation (6550+ lines)")
+    System(task8_2, "Task 8.2 - Integration Examples", "Example applications, Docker deployments, benchmarking scripts, and monitoring dashboards (2220+ lines)")
+}
+
+System_Ext(ipfs_cluster, "IPFS-Cluster", "Distributed IPFS cluster for high-availability content storage")
+System_Ext(boxo, "Boxo Library", "Modular IPFS implementation with high-load optimizations")
+System_Ext(prometheus, "Prometheus", "Metrics collection and monitoring system")
+System_Ext(grafana, "Grafana", "Metrics visualization and alerting platform")
+System_Ext(docker, "Docker/Kubernetes", "Container orchestration platforms")
+
+' Relationships
+Rel(developer, task8_1, "Reads configuration guides and best practices")
+Rel(developer, task8_2, "Uses example applications and code templates")
+Rel(devops, task8_1, "Follows deployment and migration guides")
+Rel(devops, task8_2, "Deploys using Docker Compose examples")
+Rel(sysadmin, task8_1, "Uses troubleshooting guides and diagnostic scripts")
+Rel(sysadmin, task8_2, "Monitors using Grafana dashboards")
+
+Rel(task8_1, boxo, "Documents configuration parameters and optimizations")
+Rel(task8_1, ipfs_cluster, "Provides cluster deployment examples")
+Rel(task8_2, ipfs_cluster, "Integrates example applications with cluster")
+Rel(task8_2, boxo, "Demonstrates high-load optimizations")
+Rel(task8_2, prometheus, "Collects performance metrics")
+Rel(task8_2, grafana, "Visualizes metrics and alerts")
+Rel(task8_2, docker, "Provides containerized deployments")
+
+SHOW_LEGEND()
+@enduml

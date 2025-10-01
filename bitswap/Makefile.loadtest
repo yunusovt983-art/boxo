@@ -1,0 +1,252 @@
+# Bitswap Load Testing Makefile
+# Task 7.1 Implementation - Load tests for 10,000+ connections, 100,000 req/sec, 24+ hour stability
+
+.PHONY: help test-load test-concurrent test-throughput test-stability test-benchmarks test-stress test-all clean
+
+# Default target
+help:
+	@echo "Bitswap Load Testing Commands:"
+	@echo ""
+	@echo "Basic Load Tests:"
+	@echo "  test-concurrent    - Test 10,000+ concurrent connections"
+	@echo "  test-throughput    - Test 100,000+ requests per second"
+	@echo "  test-stability     - Test 24+ hour stability (configurable)"
+	@echo "  test-benchmarks    - Run automated performance benchmarks"
+	@echo ""
+	@echo "Advanced Tests:"
+	@echo "  test-stress        - Run stress and failure recovery tests"
+	@echo "  test-extreme       - Run extreme load scenarios"
+	@echo "  test-memory        - Run memory leak detection tests"
+	@echo "  test-network       - Test various network conditions"
+	@echo ""
+	@echo "Complete Test Suite:"
+	@echo "  test-all           - Run complete comprehensive test suite"
+	@echo "  test-ci            - Run CI-friendly test suite (shorter duration)"
+	@echo ""
+	@echo "Utilities:"
+	@echo "  clean              - Clean test results and temporary files"
+	@echo "  validate-env       - Validate system environment for load testing"
+	@echo ""
+	@echo "Environment Variables:"
+	@echo "  OUTPUT_DIR                    - Test results directory (default: test_results)"
+	@echo "  BITSWAP_STABILITY_DURATION    - Stability test duration (default: 30m)"
+	@echo "  BITSWAP_EXTREME_DURATION      - Enable extreme duration tests"
+	@echo "  GOMAXPROCS                    - Number of CPU cores to use"
+
+# Test 10,000+ concurrent connections
+test-concurrent:
+	@echo "Running 10,000+ concurrent connections test..."
+	@mkdir -p test_results
+	go test -v -timeout=30m -run="TestBitswapComprehensiveLoadSuite/Test_10K_ConcurrentConnections" ./loadtest
+
+# Test 100,000+ requests per second
+test-throughput:
+	@echo "Running 100,000+ requests per second test..."
+	@mkdir -p test_results
+	go test -v -timeout=20m -run="TestBitswapComprehensiveLoadSuite/Test_100K_RequestsPerSecond" ./loadtest
+
+# Test 24+ hour stability (configurable duration)
+test-stability:
+	@echo "Running stability test (duration: $(or $(BITSWAP_STABILITY_DURATION),30m))..."
+	@mkdir -p test_results
+	BITSWAP_STABILITY_DURATION=$(or $(BITSWAP_STABILITY_DURATION),30m) \
+	go test -v -timeout=25h -run="TestBitswapComprehensiveLoadSuite/Test_24Hour_Stability" ./loadtest
+
+# Run automated performance benchmarks
+test-benchmarks:
+	@echo "Running automated performance benchmarks..."
+	@mkdir -p test_results
+	go test -v -timeout=15m -run="TestBitswapComprehensiveLoadSuite/Test_Automated_Benchmarks" ./loadtest
+
+# Run stress and failure recovery tests
+test-stress:
+	@echo "Running stress and failure recovery tests..."
+	@mkdir -p test_results
+	go test -v -timeout=20m -run="TestBitswapStress" ./loadtest
+
+# Run extreme load scenarios
+test-extreme:
+	@echo "Running extreme load scenarios..."
+	@mkdir -p test_results
+	go test -v -timeout=15m -run="TestBitswapComprehensiveLoadSuite/Test_Extreme_Load_Scenarios" ./loadtest
+
+# Run memory leak detection tests
+test-memory:
+	@echo "Running memory leak detection tests..."
+	@mkdir -p test_results
+	go test -v -timeout=45m -run="TestBitswapComprehensiveLoadSuite/Test_Memory_Leak_Detection" ./loadtest
+
+# Test various network conditions
+test-network:
+	@echo "Running network condition tests..."
+	@mkdir -p test_results
+	go test -v -timeout=15m -run="TestBitswapComprehensiveLoadSuite/Test_Network_Conditions" ./loadtest
+
+# Run complete comprehensive test suite
+test-all:
+	@echo "Running complete comprehensive load test suite..."
+	@echo "This may take several hours depending on configuration..."
+	@mkdir -p test_results
+	go test -v -timeout=26h -run="TestBitswapComprehensiveLoadSuite" ./loadtest
+	@echo ""
+	@echo "Running stress test scenarios..."
+	go test -v -timeout=2h -run="TestBitswapStress" ./loadtest
+	@echo ""
+	@echo "Test suite completed. Results saved to test_results/"
+
+# Run CI-friendly test suite (shorter durations)
+test-ci:
+	@echo "Running CI-friendly test suite..."
+	@mkdir -p test_results
+	BITSWAP_STABILITY_DURATION=5m \
+	go test -v -timeout=45m -run="TestBitswapComprehensiveLoadSuite" ./loadtest
+
+# Run performance benchmarks
+bench:
+	@echo "Running Go benchmarks..."
+	@mkdir -p test_results
+	go test -v -timeout=30m -bench=. -benchmem -run="^$$" ./loadtest > test_results/benchmark_results.txt
+
+# Run specific benchmark patterns
+bench-scaling:
+	@echo "Running scaling benchmarks..."
+	@mkdir -p test_results
+	go test -v -timeout=20m -bench="BenchmarkBitswap.*Scaling" -benchmem -run="^$$" ./loadtest
+
+bench-throughput:
+	@echo "Running throughput benchmarks..."
+	@mkdir -p test_results
+	go test -v -timeout=15m -bench="BenchmarkBitswap.*Throughput" -benchmem -run="^$$" ./loadtest
+
+bench-latency:
+	@echo "Running latency benchmarks..."
+	@mkdir -p test_results
+	go test -v -timeout=15m -bench="BenchmarkBitswap.*Latency" -benchmem -run="^$$" ./loadtest
+
+# Validate system environment for load testing
+validate-env:
+	@echo "Validating system environment for load testing..."
+	@echo 'package main; import "github.com/ipfs/boxo/bitswap/loadtest"; func main() { if err := loadtest.ValidateEnvironment(); err != nil { panic(err) } else { println("Environment validation passed") } }' > /tmp/validate.go && go run /tmp/validate.go && rm /tmp/validate.go
+
+# Clean test results and temporary files
+clean:
+	@echo "Cleaning test results and temporary files..."
+	rm -rf test_results/
+	rm -f *.prof
+	rm -f *.test
+	rm -f cpu.out mem.out
+	@echo "Cleanup completed."
+
+# Profile CPU usage during tests
+profile-cpu:
+	@echo "Running load tests with CPU profiling..."
+	@mkdir -p test_results
+	go test -v -timeout=10m -cpuprofile=test_results/cpu.prof -run="TestBitswapComprehensiveLoadSuite/Test_Automated_Benchmarks" ./loadtest
+	@echo "CPU profile saved to test_results/cpu.prof"
+	@echo "Analyze with: go tool pprof test_results/cpu.prof"
+
+# Profile memory usage during tests
+profile-memory:
+	@echo "Running load tests with memory profiling..."
+	@mkdir -p test_results
+	go test -v -timeout=10m -memprofile=test_results/mem.prof -run="TestBitswapComprehensiveLoadSuite/Test_Memory_Leak_Detection" ./loadtest
+	@echo "Memory profile saved to test_results/mem.prof"
+	@echo "Analyze with: go tool pprof test_results/mem.prof"
+
+# Run tests with race detection
+test-race:
+	@echo "Running tests with race detection..."
+	@mkdir -p test_results
+	go test -v -timeout=15m -race -run="TestBitswapComprehensiveLoadSuite/Test_10K_ConcurrentConnections" ./loadtest
+
+# Generate test coverage report
+test-coverage:
+	@echo "Running tests with coverage analysis..."
+	@mkdir -p test_results
+	go test -v -timeout=15m -coverprofile=test_results/coverage.out -run="TestBitswapComprehensiveLoadSuite/Test_Automated_Benchmarks" ./loadtest
+	go tool cover -html=test_results/coverage.out -o test_results/coverage.html
+	@echo "Coverage report saved to test_results/coverage.html"
+
+# Quick smoke test to verify load test infrastructure
+test-smoke:
+	@echo "Running smoke test to verify load test infrastructure..."
+	@mkdir -p test_results
+	go test -v -timeout=2m -run="TestBitswapComprehensiveLoadSuite/Test_Automated_Benchmarks/Benchmark_Small_Scale" ./loadtest
+
+# Run tests with verbose output and save logs
+test-verbose:
+	@echo "Running tests with verbose logging..."
+	@mkdir -p test_results
+	go test -v -timeout=30m -run="TestBitswapComprehensiveLoadSuite" ./loadtest 2>&1 | tee test_results/test_output.log
+
+# Display test results summary
+results:
+	@echo "Test Results Summary:"
+	@echo "===================="
+	@if [ -f test_results/load_test_summary.txt ]; then \
+		cat test_results/load_test_summary.txt; \
+	else \
+		echo "No test results found. Run 'make test-all' first."; \
+	fi
+
+# Monitor system resources during tests
+monitor:
+	@echo "Starting system resource monitoring..."
+	@echo "Run your tests in another terminal, then press Ctrl+C to stop monitoring"
+	@mkdir -p test_results
+	@while true; do \
+		echo "$$(date): CPU: $$(top -bn1 | grep "Cpu(s)" | awk '{print $$2}' | cut -d'%' -f1)%, Memory: $$(free | grep Mem | awk '{printf "%.1f%%", $$3/$$2 * 100.0}'), Goroutines: $$(ps -eo nlwp | tail -n +2 | awk '{sum += $$1} END {print sum}')"; \
+		sleep 5; \
+	done | tee test_results/system_monitor.log
+
+# Configuration examples
+config-examples:
+	@echo "Creating example configuration files..."
+	@mkdir -p test_results
+	@echo '{"test_timeout":"30m","stability_duration":"24h","max_concurrent_connections":50000,"max_request_rate":200000,"enable_long_running":true,"enable_stress_tests":true,"enable_benchmarks":true,"output_dir":"test_results","generate_reports":true}' > test_results/config_production.json
+	@echo '{"test_timeout":"10m","stability_duration":"5m","max_concurrent_connections":1000,"max_request_rate":10000,"enable_long_running":false,"enable_stress_tests":false,"enable_benchmarks":true,"output_dir":"test_results","generate_reports":true}' > test_results/config_ci.json
+	@echo "Example configurations created in test_results/"
+	@echo "  - config_production.json: Full production load testing"
+	@echo "  - config_ci.json: CI/CD friendly testing"
+
+# Show system requirements
+requirements:
+	@echo "System Requirements for Load Testing:"
+	@echo "===================================="
+	@echo "Minimum Requirements:"
+	@echo "  - CPU: 4+ cores (8+ recommended for high load tests)"
+	@echo "  - RAM: 8GB+ (16GB+ recommended for stability tests)"
+	@echo "  - Disk: 10GB+ free space for test results"
+	@echo "  - Network: Stable connection for distributed tests"
+	@echo ""
+	@echo "Recommended for Full Test Suite:"
+	@echo "  - CPU: 16+ cores"
+	@echo "  - RAM: 32GB+"
+	@echo "  - Disk: 50GB+ SSD"
+	@echo "  - Dedicated test environment"
+	@echo ""
+	@echo "Current System:"
+	@echo "  - CPU Cores: $$(nproc)"
+	@echo "  - Memory: $$(free -h | grep Mem | awk '{print $$2}')"
+	@echo "  - Disk Space: $$(df -h . | tail -1 | awk '{print $$4}') available"
+	@echo "  - Go Version: $$(go version)"
+
+# Docker support for isolated testing
+docker-test:
+	@echo "Running load tests in Docker container..."
+	docker run --rm -v $$(pwd):/workspace -w /workspace/bitswap \
+		-e OUTPUT_DIR=/workspace/test_results \
+		golang:1.21 make -f Makefile.loadtest test-ci
+
+# Generate load test report
+report:
+	@echo "Generating comprehensive load test report..."
+	@if [ -d test_results ]; then \
+		echo "Load Test Report Generated: $$(date)" > test_results/report.md; \
+		echo "==============================" >> test_results/report.md; \
+		echo "" >> test_results/report.md; \
+		find test_results -name "*.json" -exec echo "## {}" \; -exec cat {} \; >> test_results/report.md; \
+		echo "Report generated: test_results/report.md"; \
+	else \
+		echo "No test results found. Run tests first."; \
+	fi

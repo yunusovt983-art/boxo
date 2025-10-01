@@ -1,0 +1,134 @@
+{
+  "cluster": {
+    "peername": "cluster-node",
+    "secret": "${CLUSTER_SECRET}",
+    "leave_on_shutdown": false,
+    "listen_multiaddress": "/ip4/0.0.0.0/tcp/9096",
+    "enable_relay_hop": true,
+    "connection_manager": {
+      "high_water": 2000,
+      "low_water": 1000,
+      "grace_period": "30s"
+    },
+    "dial_peer_timeout": "3s",
+    "request_timeout": "5s",
+    "commit_retries": 1,
+    "commit_retry_delay": "200ms",
+    "monitor_ping_interval": "15s",
+    "peer_watch_interval": "5s",
+    "mdns_interval": "10s",
+    "replication_factor_min": 1,
+    "replication_factor_max": 3
+  },
+  "consensus": {
+    "crdt": {
+      "cluster_name": "boxo-high-load-cluster",
+      "trusted_peers": ["*"],
+      "batching": {
+        "max_batch_size": 1000,
+        "max_batch_age": "20ms"
+      }
+    }
+  },
+  "api": {
+    "ipfsproxy": {
+      "listen_multiaddress": "/ip4/0.0.0.0/tcp/9095",
+      "node_multiaddress": "${IPFS_API}",
+      "log_level": "info",
+      "read_timeout": "30s",
+      "read_header_timeout": "5s",
+      "write_timeout": "30s",
+      "idle_timeout": "60s"
+    },
+    "restapi": {
+      "http_listen_multiaddress": "/ip4/0.0.0.0/tcp/9094",
+      "read_timeout": "30s",
+      "read_header_timeout": "5s",
+      "write_timeout": "30s",
+      "idle_timeout": "60s",
+      "max_header_bytes": 4096,
+      "cors_allowed_origins": ["*"],
+      "cors_allowed_methods": ["GET", "POST", "PUT", "DELETE"],
+      "cors_allowed_headers": ["*"]
+    }
+  },
+  "ipfs_connector": {
+    "ipfshttp": {
+      "node_multiaddress": "${IPFS_API}",
+      "connect_swarms_delay": "30s",
+      "ipfs_request_timeout": "5m",
+      "pin_timeout": "2m",
+      "unpin_timeout": "3h",
+      "repogc_timeout": "24h",
+      "informer_trigger_interval": "0s"
+    }
+  },
+  "pin_tracker": {
+    "stateless": {
+      "concurrent_pins": 10,
+      "priority_pin_max_age": "24h",
+      "priority_pin_max_retries": 5
+    }
+  },
+  "monitor": {
+    "pubsubmon": {
+      "check_interval": "15s",
+      "failure_threshold": 3
+    }
+  },
+  "allocator": {
+    "balanced": {
+      "allocate_by": ["tag:group", "freespace"]
+    }
+  },
+  "informer": {
+    "disk": {
+      "metric_ttl": "30s",
+      "metric_type": "freespace"
+    },
+    "numpin": {
+      "metric_ttl": "30s"
+    },
+    "tags": {
+      "metric_ttl": "30s",
+      "tags": {
+        "group": "default"
+      }
+    }
+  },
+  "observations": {
+    "metrics": {
+      "enable_stats": true,
+      "prometheus_endpoint": "/ip4/0.0.0.0/tcp/8888",
+      "reporting_interval": "15s"
+    },
+    "tracing": {
+      "enable_tracing": false,
+      "jaeger_agent_endpoint": "/ip4/jaeger/udp/6831",
+      "sampling_prob": 0.3,
+      "service_name": "cluster-daemon"
+    }
+  },
+  "datastore": {
+    "badger": {
+      "badger_options": {
+        "dir": "",
+        "value_dir": "",
+        "sync_writes": false,
+        "num_versions_to_keep": 1,
+        "read_only": false,
+        "compression": 1,
+        "in_memory": false,
+        "metrics_enabled": true,
+        "num_compactors": 2,
+        "num_level_zero_tables": 5,
+        "num_level_zero_tables_stall": 15,
+        "num_memtables": 5,
+        "bloom_false_positive": 0.01,
+        "block_size": 4096,
+        "block_cache_size": 256000000,
+        "index_cache_size": 0
+      }
+    }
+  }
+}

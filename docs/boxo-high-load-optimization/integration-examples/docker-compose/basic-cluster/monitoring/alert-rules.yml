@@ -1,0 +1,171 @@
+groups:
+- name: boxo-high-load-alerts
+  rules:
+  # High response time alerts
+  - alert: HighResponseTime
+    expr: histogram_quantile(0.95, rate(ipfs_cluster_api_request_duration_seconds_bucket[5m])) > 0.1
+    for: 2m
+    labels:
+      severity: warning
+      component: cluster
+    annotations:
+      summary: "High response time detected"
+      description: "95th percentile response time is {{ $value }}s for {{ $labels.instance }}"
+
+  - alert: CriticalResponseTime
+    expr: histogram_quantile(0.95, rate(ipfs_cluster_api_request_duration_seconds_bucket[5m])) > 0.5
+    for: 1m
+    labels:
+      severity: critical
+      component: cluster
+    annotations:
+      summary: "Critical response time detected"
+      description: "95th percentile response time is {{ $value }}s for {{ $labels.instance }}"
+
+  # Memory usage alerts
+  - alert: HighMemoryUsage
+    expr: (process_resident_memory_bytes / process_virtual_memory_max_bytes) > 0.85
+    for: 5m
+    labels:
+      severity: warning
+      component: system
+    annotations:
+      summary: "High memory usage detected"
+      description: "Memory usage is {{ $value | humanizePercentage }} for {{ $labels.instance }}"
+
+  - alert: CriticalMemoryUsage
+    expr: (process_resident_memory_bytes / process_virtual_memory_max_bytes) > 0.95
+    for: 2m
+    labels:
+      severity: critical
+      component: system
+    annotations:
+      summary: "Critical memory usage detected"
+      description: "Memory usage is {{ $value | humanizePercentage }} for {{ $labels.instance }}"
+
+  # Error rate alerts
+  - alert: HighErrorRate
+    expr: rate(ipfs_cluster_api_requests_total{code!~"2.."}[5m]) / rate(ipfs_cluster_api_requests_total[5m]) > 0.05
+    for: 2m
+    labels:
+      severity: warning
+      component: cluster
+    annotations:
+      summary: "High error rate detected"
+      description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.instance }}"
+
+  - alert: CriticalErrorRate
+    expr: rate(ipfs_cluster_api_requests_total{code!~"2.."}[5m]) / rate(ipfs_cluster_api_requests_total[5m]) > 0.1
+    for: 1m
+    labels:
+      severity: critical
+      component: cluster
+    annotations:
+      summary: "Critical error rate detected"
+      description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.instance }}"
+
+  # Connection alerts
+  - alert: HighConnectionCount
+    expr: ipfs_cluster_peers_connected > 1800
+    for: 5m
+    labels:
+      severity: warning
+      component: network
+    annotations:
+      summary: "High connection count"
+      description: "Connection count is {{ $value }} for {{ $labels.instance }}"
+
+  - alert: LowConnectionCount
+    expr: ipfs_cluster_peers_connected < 100
+    for: 5m
+    labels:
+      severity: warning
+      component: network
+    annotations:
+      summary: "Low connection count"
+      description: "Connection count is {{ $value }} for {{ $labels.instance }}"
+
+  # Disk space alerts
+  - alert: LowDiskSpace
+    expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.1
+    for: 5m
+    labels:
+      severity: warning
+      component: storage
+    annotations:
+      summary: "Low disk space"
+      description: "Disk space is {{ $value | humanizePercentage }} available for {{ $labels.instance }}"
+
+  - alert: CriticalDiskSpace
+    expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.05
+    for: 2m
+    labels:
+      severity: critical
+      component: storage
+    annotations:
+      summary: "Critical disk space"
+      description: "Disk space is {{ $value | humanizePercentage }} available for {{ $labels.instance }}"
+
+  # Cluster health alerts
+  - alert: ClusterNodeDown
+    expr: up{job="ipfs-cluster"} == 0
+    for: 1m
+    labels:
+      severity: critical
+      component: cluster
+    annotations:
+      summary: "Cluster node is down"
+      description: "Cluster node {{ $labels.instance }} has been down for more than 1 minute"
+
+  - alert: IPFSNodeDown
+    expr: up{job="ipfs"} == 0
+    for: 1m
+    labels:
+      severity: critical
+      component: ipfs
+    annotations:
+      summary: "IPFS node is down"
+      description: "IPFS node {{ $labels.instance }} has been down for more than 1 minute"
+
+  # Performance degradation alerts
+  - alert: BitswapPerformanceDegradation
+    expr: rate(ipfs_bitswap_blocks_received_total[5m]) < 10
+    for: 5m
+    labels:
+      severity: warning
+      component: bitswap
+    annotations:
+      summary: "Bitswap performance degradation"
+      description: "Bitswap block receive rate is {{ $value }} blocks/sec for {{ $labels.instance }}"
+
+  - alert: BlockstoreCacheHitRateLow
+    expr: ipfs_blockstore_cache_hit_rate < 0.7
+    for: 10m
+    labels:
+      severity: warning
+      component: blockstore
+    annotations:
+      summary: "Low blockstore cache hit rate"
+      description: "Blockstore cache hit rate is {{ $value | humanizePercentage }} for {{ $labels.instance }}"
+
+  # Circuit breaker alerts
+  - alert: CircuitBreakerOpen
+    expr: boxo_circuit_breaker_state == 1
+    for: 1m
+    labels:
+      severity: critical
+      component: circuit-breaker
+    annotations:
+      summary: "Circuit breaker is open"
+      description: "Circuit breaker for {{ $labels.service }} is open on {{ $labels.instance }}"
+
+  # Auto-scaling alerts
+  - alert: AutoScalingTriggered
+    expr: increase(boxo_autoscaling_events_total[5m]) > 0
+    for: 0s
+    labels:
+      severity: info
+      component: autoscaling
+    annotations:
+      summary: "Auto-scaling event triggered"
+      description: "Auto-scaling event for {{ $labels.component }} on {{ $labels.instance }}"

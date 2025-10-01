@@ -1,0 +1,245 @@
+@startuml Task3_Level4_Code
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Task 3: Детальная архитектура кода - Диаграмма классов (Level 4)
+
+package "blockstore" {
+    
+    package "multitier" {
+        interface MultiTierBlockstore {
+            +Get(ctx, cid) Block
+            +Put(ctx, block) error
+            +GetWithTier(ctx, cid, tier) Block
+            +PutWithTier(ctx, block, tier) error
+            +PromoteBlock(ctx, cid) error
+            +DemoteBlock(ctx, cid) error
+            +GetTierStats() map[CacheTier]*TierStats
+            +Compact(ctx) error
+        }
+        
+        class multiTierBlockstore {
+            -config *MultiTierConfig
+            -tiers map[CacheTier]Blockstore
+            -accessInfo map[string]*AccessInfo
+            -stats map[CacheTier]*TierStats
+            -mu sync.RWMutex
+            -compactionTicker *time.Ticker
+            +NewMultiTierBlockstore(ctx, tiers, config) *multiTierBlockstore
+            -updateAccessInfo(key, tier, size)
+            -considerPromotion(ctx, cid, key) error
+            -makeSpace(ctx, tier, neededSize) error
+            -cleanupExpiredAccessInfo()
+        }
+        
+        class TierConfig {
+            +MaxSize int64
+            +MaxItems int
+            +TTL time.Duration
+            +PromotionThreshold int
+            +Enabled bool
+        }
+        
+        class AccessInfo {
+            +Count int
+            +LastAccess time.Time
+            +FirstAccess time.Time
+            +CurrentTier CacheTier
+            +Size int
+        }
+        
+        enum CacheTier {
+            MemoryTier
+            SSDTier
+            HDDTier
+        }
+    }
+    
+    package "batch_io" {
+        interface BatchIOManager {
+            +BatchPut(ctx, blocks) error
+            +BatchGet(ctx, cids) []Block
+            +BatchHas(ctx, cids) []bool
+            +BatchDelete(ctx, cids) error
+            +Flush(ctx) error
+            +GetStats() *BatchIOStats
+        }
+        
+        class batchIOManager {
+            -config *BatchIOConfig
+            -blockstore Blockstore
+            -putQueue chan *BatchOperation
+            -getQueue chan *BatchOperation
+            -hasQueue chan *BatchOperation
+            -deleteQueue chan *BatchOperation
+            -workers sync.WaitGroup
+            -stats *BatchIOStats
+            +NewBatchIOManager(ctx, bs, config) *batchIOManager
+            -putWorker(ctx)
+            -getWorker(ctx)
+            -processPendingPuts(ops)
+            -transactionalPutMany(ctx, blocks) error
+        }
+        
+        class BatchOperation {
+            +Type BatchOpType
+            +Blocks []Block
+            +CIDs []cid.Cid
+            +Results chan BatchResult
+            +Context context.Context
+            +Timestamp time.Time
+        }
+        
+        class BatchIOStats {
+            +TotalBatches int64
+            +TotalItems int64
+            +AverageBatchSize float64
+            +AverageLatency time.Duration
+            +SuccessfulBatches int64
+            +FailedBatches int64
+        }
+    }
+    
+    package "streaming" {
+        interface StreamingHandler {
+            +StreamPut(ctx, cid, data) error
+            +StreamGet(ctx, cid) io.ReadCloser
+            +ChunkedPut(ctx, cid, data, chunkSize) error
+            +ChunkedGet(ctx, cid) io.ReadCloser
+            +CompressedPut(ctx, cid, data) error
+            +CompressedGet(ctx, cid) io.ReadCloser
+            +GetStreamingStats() *StreamingStats
+        }
+        
+        class streamingHandler {
+            -config *StreamingConfig
+            -blockstore Blockstore
+            -activeStreams map[string]*StreamInfo
+            -chunkMetadata map[string]*ChunkMetadata
+            -compressionStats *CompressionStats
+            -mu sync.RWMutex
+            +NewStreamingHandler(ctx, bs, config) *streamingHandler
+            -shouldUseStreaming(size) bool
+            -chunkData(data, chunkSize) [][]byte
+            -compressData(data) ([]byte, float64)
+            -decompressData(data) []byte
+        }
+        
+        class ChunkMetadata {
+            +TotalChunks int
+            +ChunkSize int
+            +TotalSize int64
+            +Checksums []string
+            +Compressed bool
+        }
+        
+        class StreamingStats {
+            +StreamedBlocks int64
+            +ChunkedBlocks int64
+            +CompressedBlocks int64
+            +CompressionRatio float64
+            +AverageChunkSize int
+        }
+    }
+    
+    package "memory" {
+        interface MemoryAware {
+            +SetMemoryPressureCallback(callback)
+            +GetMemoryStats() *MemoryStats
+            +ForceGC()
+        }
+        
+        class MemoryMonitor {
+            -thresholds *MemoryThresholds
+            -callbacks []MemoryPressureCallback
+            -stats *MemoryStats
+            -ticker *time.Ticker
+            -mu sync.RWMutex
+            +NewMemoryMonitor(config) *MemoryMonitor
+            +Start(ctx)
+            -checkMemoryPressure()
+            -notifyCallbacks(level)
+        }
+        
+        class MemoryAwareBlockstore {
+            -blockstore Blockstore
+            -monitor *MemoryMonitor
+            -config *MemoryAwareConfig
+            -degradationLevel int
+            -lastCleanup time.Time
+            +NewMemoryAwareBlockstore(ctx, bs, config) *MemoryAwareBlockstore
+            -handleMemoryPressure(level)
+            -performCleanup(aggressiveness)
+            -shouldRejectOperation() bool
+        }
+        
+        class MemoryStats {
+            +UsedMemory int64
+            +TotalMemory int64
+            +UsageRatio float64
+            +PressureLevel MemoryPressureLevel
+            +GCCycles int64
+        }
+        
+        enum MemoryPressureLevel {
+            None
+            Low
+            Medium
+            High
+            Critical
+        }
+    }
+}
+
+' Наследование и реализация интерфейсов
+MultiTierBlockstore <|.. multiTierBlockstore
+BatchIOManager <|.. batchIOManager
+StreamingHandler <|.. streamingHandler
+MemoryAware <|.. MemoryMonitor
+MemoryAware <|.. MemoryAwareBlockstore
+
+' Композиция и агрегация
+multiTierBlockstore *-- TierConfig
+multiTierBlockstore *-- AccessInfo
+multiTierBlockstore --> CacheTier
+
+batchIOManager *-- BatchOperation
+batchIOManager *-- BatchIOStats
+BatchOperation --> BatchOpType
+
+streamingHandler *-- ChunkMetadata
+streamingHandler *-- StreamingStats
+
+MemoryMonitor *-- MemoryStats
+MemoryAwareBlockstore *-- MemoryMonitor
+MemoryStats --> MemoryPressureLevel
+
+' Взаимодействия между пакетами
+MemoryAwareBlockstore --> MultiTierBlockstore : "wraps"
+MemoryAwareBlockstore --> BatchIOManager : "wraps"
+MemoryAwareBlockstore --> StreamingHandler : "wraps"
+
+note top of MultiTierBlockstore
+**Task 3.1: MultiTier Caching**
+Интерфейс для многоуровневого кэширования
+с автоматическим управлением данными
+end note
+
+note top of BatchIOManager
+**Task 3.2: Batch I/O Operations**
+Интерфейс для группировки и асинхронной
+обработки операций I/O
+end note
+
+note top of StreamingHandler
+**Task 3.3: Streaming Processing**
+Интерфейс для потоковой обработки
+больших блоков с сжатием
+end note
+
+note top of MemoryAware
+**Task 3.4: Memory Management**
+Интерфейс для мониторинга памяти
+и graceful degradation
+end note
+
+@enduml

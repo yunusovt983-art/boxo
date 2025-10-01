@@ -1,0 +1,70 @@
+@startuml Task2-Component-PrioritySystem
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Task 2.2: Request Prioritization System - Диаграмма компонентов
+
+Container(bitswap_core, "Bitswap Core", "Go")
+Container(adaptive_config, "Adaptive Configuration", "Go")
+Container(load_monitor, "Load Monitor", "Go")
+Container(metrics_collector, "Metrics Collector", "Go")
+
+Container_Boundary(priority_system, "Task 2.2: Request Prioritization System") {
+    Component(priority_manager, "PriorityRequestManager", "Go Service", "Главный менеджер приоритизации запросов")
+    Component(request_classifier, "Request Classifier", "Go Logic", "Классификация запросов по приоритетам")
+    Component(priority_queues, "Priority Queues", "Go Channels", "Отдельные очереди для каждого уровня приоритета")
+    Component(resource_pool, "Resource Pool", "Go Service", "Управление доступными ресурсами")
+    Component(queue_processor, "Queue Processor", "Go Service", "Обработка запросов из приоритетных очередей")
+    
+    ComponentDb(request_context, "Request Context", "Map", "Контекст и метаданные запросов")
+    ComponentDb(priority_stats, "Priority Statistics", "Metrics", "Статистика по приоритетам")
+    ComponentDb(resource_limits, "Resource Limits", "Config", "Лимиты ресурсов и пороги")
+}
+
+Rel(bitswap_core, priority_manager, "Постановка запросов в очередь")
+Rel(priority_manager, request_classifier, "Классификация новых запросов")
+Rel(priority_manager, queue_processor, "Управление обработкой очередей")
+
+Rel(request_classifier, adaptive_config, "Получение порогов приоритетов")
+Rel(request_classifier, request_context, "Анализ контекста запроса")
+Rel(request_classifier, priority_queues, "Размещение в соответствующей очереди")
+
+Rel(queue_processor, priority_queues, "Извлечение запросов для обработки")
+Rel(queue_processor, resource_pool, "Проверка доступности ресурсов")
+Rel(queue_processor, bitswap_core, "Выполнение приоритизированных запросов")
+
+Rel(resource_pool, resource_limits, "Проверка лимитов ресурсов")
+Rel(resource_pool, adaptive_config, "Получение текущих лимитов")
+
+Rel(priority_manager, priority_stats, "Обновление статистики")
+Rel(queue_processor, priority_stats, "Метрики обработки")
+
+Rel(priority_manager, load_monitor, "Отчеты о производительности")
+Rel(priority_manager, metrics_collector, "Метрики приоритизации")
+Rel(resource_pool, metrics_collector, "Метрики использования ресурсов")
+
+note right of request_classifier
+**Критерии приоритизации:**
+• Время до deadline (Critical: <10ms, High: <50ms)
+• Количество повторов (3+ = High priority)
+• Session requests = Normal priority
+• Default = Low priority
+end note
+
+note right of priority_queues
+**Структура очередей:**
+• Critical Priority Queue (heap-based)
+• High Priority Queue (heap-based)  
+• Normal Priority Queue (heap-based)
+• Low Priority Queue (heap-based)
+• Обработка в порядке приоритета
+end note
+
+note right of resource_pool
+**Управление ресурсами:**
+• Лимит одновременных запросов
+• Лимит пропускной способности/сек
+• Сброс счетчиков каждую секунду
+• Блокировка при превышении лимитов
+end note
+
+@enduml

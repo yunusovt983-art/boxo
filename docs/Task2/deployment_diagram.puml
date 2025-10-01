@@ -1,0 +1,122 @@
+@startuml Task2_Deployment
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+
+title Task 2: Bitswap High-Throughput Optimization - Deployment View
+
+Deployment_Node(ipfs_node, "IPFS Node", "Linux/Docker Container") {
+    Deployment_Node(go_runtime, "Go Runtime", "Go 1.19+") {
+        
+        Container(bitswap_client, "Bitswap Client", "Go", "Main bitswap client with adaptive optimizations")
+        Container(bitswap_server, "Bitswap Server", "Go", "Bitswap server handling incoming requests")
+        
+        Deployment_Node(adaptive_layer, "Adaptive Optimization Layer", "Go Packages") {
+            
+            ' Task 2.1 Components
+            Container(adaptive_config, "AdaptiveBitswapConfig", "Go Service", "Dynamic configuration management\n• 256KB-100MB peer limits\n• 128-2048 worker scaling\n• 30s adaptation interval")
+            
+            Container(connection_manager, "AdaptiveConnectionManager", "Go Service", "Peer connection management\n• Per-peer metrics tracking\n• Dynamic limit calculation\n• Error rate monitoring")
+            
+            ' Task 2.2 Components  
+            Container(load_monitor, "LoadMonitor", "Go Service", "Performance monitoring\n• P95 response time tracking\n• RPS calculation\n• 1000-sample circular buffer")
+            
+            ' Task 2.3 Components
+            Container(batch_processor, "BatchRequestProcessor", "Go Service", "Request batching system\n• 471k ops/sec throughput\n• Priority-based queuing\n• Configurable batch sizes")
+            
+            Deployment_Node(worker_pools, "Worker Pool System", "Go Goroutines") {
+                Container(critical_pool, "Critical Workers", "25% allocation", "High-priority request processing\n<10ms response target")
+                Container(high_pool, "High Workers", "25% allocation", "Important request processing\n<50ms response target")  
+                Container(normal_pool, "Normal Workers", "33% allocation", "Standard request processing")
+                Container(low_pool, "Low Workers", "17% allocation", "Background processing")
+            }
+        }
+    }
+    
+    ContainerDb(blockstore, "Local Blockstore", "BadgerDB/LevelDB", "Block storage with caching\n• Fast block retrieval\n• Metadata indexing")
+    
+    ContainerDb(metrics_store, "Metrics Storage", "In-Memory", "Performance metrics\n• Response time samples\n• Connection statistics\n• Load factor history")
+}
+
+Deployment_Node(network_layer, "Network Layer", "libp2p") {
+    Container(p2p_transport, "P2P Transport", "TCP/QUIC", "Network transport layer")
+    Container(peer_discovery, "Peer Discovery", "DHT/mDNS", "Peer discovery mechanisms")
+}
+
+System_Ext(ipfs_network, "IPFS Network", "Distributed network of IPFS peers")
+System_Ext(monitoring, "External Monitoring", "Prometheus/Grafana (Optional)")
+
+' Internal relationships
+Rel(bitswap_client, adaptive_config, "Gets configuration")
+Rel(bitswap_client, connection_manager, "Manages connections")
+Rel(bitswap_client, batch_processor, "Submits requests")
+
+Rel(bitswap_server, adaptive_config, "Gets configuration")
+Rel(bitswap_server, connection_manager, "Reports activity")
+
+Rel(adaptive_config, load_monitor, "Receives metrics")
+Rel(connection_manager, load_monitor, "Reports connection metrics")
+Rel(batch_processor, worker_pools, "Distributes tasks")
+
+Rel(batch_processor, critical_pool, "Critical requests")
+Rel(batch_processor, high_pool, "High priority requests")
+Rel(batch_processor, normal_pool, "Normal requests")
+Rel(batch_processor, low_pool, "Low priority requests")
+
+' Storage relationships
+Rel(bitswap_client, blockstore, "Stores blocks")
+Rel(bitswap_server, blockstore, "Retrieves blocks")
+Rel(load_monitor, metrics_store, "Stores metrics")
+Rel(adaptive_config, metrics_store, "Reads metrics")
+
+' Network relationships
+Rel(bitswap_client, p2p_transport, "Sends requests")
+Rel(bitswap_server, p2p_transport, "Receives requests")
+Rel(p2p_transport, peer_discovery, "Discovers peers")
+Rel(p2p_transport, ipfs_network, "BitSwap Protocol")
+
+' Optional monitoring
+Rel(load_monitor, monitoring, "Exports metrics", "Optional")
+
+note right of adaptive_layer
+**Performance Characteristics:**
+• **Throughput**: 471k ops/sec (single requests)
+• **Concurrency**: >1000 concurrent requests
+• **Latency**: <100ms P95 response time
+• **Memory**: ~900B per operation
+• **Scaling**: Auto-scales based on load
+
+**Resource Allocation:**
+• **Critical**: 25% workers, <10ms target
+• **High**: 25% workers, <50ms target  
+• **Normal**: 33% workers, standard processing
+• **Low**: 17% workers, background tasks
+end note
+
+note right of worker_pools
+**Worker Pool Configuration:**
+• **Min Workers**: 128 per priority
+• **Max Workers**: 2048 per priority
+• **Auto-scaling**: Based on queue depth
+• **Panic Recovery**: Maintains stability
+• **Load Balancing**: Priority-based allocation
+
+**Batch Processing:**
+• **Batch Sizes**: 50-1000 requests
+• **Timeouts**: 1-100ms configurable
+• **Grouping**: By priority level
+• **Parallel Processing**: Multi-worker execution
+end note
+
+note right of blockstore
+**Storage Optimization:**
+• **Caching**: In-memory block cache
+• **Indexing**: Fast CID lookups
+• **Persistence**: Durable block storage
+• **Compression**: Optional block compression
+
+**Performance:**
+• **Read Latency**: <1ms typical
+• **Write Throughput**: >10k blocks/sec
+• **Cache Hit Rate**: >90% typical
+end note
+
+@enduml

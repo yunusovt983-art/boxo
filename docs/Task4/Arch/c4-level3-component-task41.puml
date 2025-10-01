@@ -1,0 +1,76 @@
+@startuml Task4.1-Component-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Task 4.1: Адаптивный менеджер соединений - Диаграмма компонентов
+
+Container_Boundary(adaptive_conn_mgr, "Адаптивный менеджер соединений") {
+    
+    Component(conn_manager, "AdaptiveConnManager", "Go struct", "Главный менеджер с динамическими лимитами и адаптацией к нагрузке")
+    
+    Component(load_monitor, "LoadMonitor", "Go struct", "Мониторинг системной нагрузки для адаптации лимитов")
+    
+    Component(cluster_pool, "ClusterConnectionPool", "Go struct", "Пулы постоянных соединений для кластерных узлов")
+    
+    Component(conn_tracker, "ConnectionTracker", "Go struct", "Отслеживание состояния и метрик соединений")
+    
+    Component(adaptation_engine, "AdaptationEngine", "Go struct", "Алгоритмы адаптации лимитов на основе нагрузки")
+    
+    Component(config_adapter, "ConfigurationAdapter", "Go struct", "Динамическое применение конфигурации")
+    
+    Component(metrics_reporter, "MetricsReporter", "Go struct", "Сбор и отправка метрик производительности")
+}
+
+Container_Ext(libp2p_host, "libp2p Host", "Базовый сетевой хост")
+Container_Ext(quality_monitor, "Quality Monitor", "Монитор качества соединений")
+Container_Ext(prometheus, "Prometheus", "Система метрик")
+
+' Основные взаимодействия
+Rel(conn_manager, load_monitor, "Получает метрики нагрузки", "GetCurrentLoad()")
+Rel(conn_manager, cluster_pool, "Управляет кластерными соединениями", "AddClusterPeer(), RemoveClusterPeer()")
+Rel(conn_manager, conn_tracker, "Отслеживает соединения", "TrackConnection(), GetConnectionState()")
+Rel(conn_manager, adaptation_engine, "Запускает адаптацию", "AdaptToLoad()")
+
+Rel(adaptation_engine, load_monitor, "Анализирует нагрузку", "GetLoadHistory()")
+Rel(adaptation_engine, config_adapter, "Применяет новые лимиты", "SetDynamicLimits()")
+
+Rel(conn_tracker, metrics_reporter, "Передает метрики", "RecordConnectionMetrics()")
+Rel(load_monitor, metrics_reporter, "Передает метрики нагрузки", "RecordLoadMetrics()")
+
+Rel(config_adapter, libp2p_host, "Применяет лимиты", "ConnManager().SetLimits()")
+Rel(conn_tracker, libp2p_host, "Отслеживает события", "Network().Notify()")
+Rel(cluster_pool, libp2p_host, "Управляет соединениями", "Connect(), Protect()")
+
+Rel(conn_manager, quality_monitor, "Получает качество соединений", "GetConnectionQuality()")
+Rel(metrics_reporter, prometheus, "Экспортирует метрики", "Prometheus metrics")
+
+note right of conn_manager
+  **Ключевые методы:**
+  • NewAdaptiveConnManager()
+  • SetDynamicLimits()
+  • AddClusterPeer()
+  • Start() / Stop()
+end note
+
+note right of load_monitor
+  **Метрики нагрузки:**
+  • ActiveConnections
+  • RequestsPerSecond
+  • AverageLatency
+  • ErrorRate
+end note
+
+note right of adaptation_engine
+  **Алгоритмы адаптации:**
+  • Высокая нагрузка: увеличить лимиты
+  • Низкая нагрузка: уменьшить лимиты
+  • Адаптивный GracePeriod
+end note
+
+note right of cluster_pool
+  **Кластерные функции:**
+  • Постоянные соединения
+  • Автоматическое переподключение
+  • Защита от отключения
+end note
+
+@enduml

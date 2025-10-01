@@ -1,0 +1,101 @@
+@startuml Task4-Adaptive-Connection-Sequence
+title Task 4: Последовательность адаптивного управления соединениями
+
+actor "External Client" as Client
+participant "Load Balancer" as LB
+participant "IPFS Node" as Node
+participant "AdaptiveConnManager" as ACM
+participant "LoadMonitor" as LM
+participant "ConnectionTracker" as CT
+participant "libp2p Network" as Network
+participant "Prometheus" as Metrics
+
+== Инициализация системы ==
+Node -> ACM: Start()
+ACM -> LM: Initialize()
+ACM -> CT: Initialize()
+ACM -> Network: Subscribe to events
+ACM -> ACM: Start adaptation loops
+
+== Входящее соединение ==
+Client -> LB: HTTP Request
+LB -> Node: Forward request
+Node -> Network: Establish P2P connection
+Network -> ACM: Connected(peerID)
+
+ACM -> CT: TrackConnection(peerID)
+CT -> CT: CreateConnectionInfo(peerID)
+ACM -> LM: RecordConnection()
+LM -> LM: UpdateActiveConnections++
+
+== Мониторинг нагрузки ==
+loop Каждые 30 секунд
+    ACM -> LM: GetCurrentLoad()
+    LM -> LM: CalculateLoad(connections, rps, latency, errors)
+    LM -> ACM: LoadMetrics(load=0.85)
+    
+    alt Load > HighThreshold (0.8)
+        ACM -> ACM: AdaptToHighLoad()
+        ACM -> ACM: IncreaseHighWater(2000 -> 3000)
+        ACM -> ACM: DecreaseLowWater(1000 -> 1200)
+        ACM -> ACM: DecreaseGracePeriod(30s -> 15s)
+        ACM -> Network: ApplyNewLimits()
+        ACM -> Metrics: RecordAdaptationEvent("high_load")
+    end
+end
+
+== Обработка запросов ==
+Client -> Node: Data request
+Node -> Network: Bitswap request
+Network -> ACM: RecordRequest(peerID, responseTime, success)
+ACM -> CT: UpdateConnectionActivity(peerID)
+ACM -> LM: RecordRequest(responseTime, success)
+
+== Кластерное соединение ==
+ACM -> ACM: AddClusterPeer(clusterPeerID)
+ACM -> Network: Connect(clusterPeerID)
+Network -> ACM: Connected(clusterPeerID)
+ACM -> Network: Protect(clusterPeerID, "cluster-peer")
+ACM -> CT: MarkAsCluster(clusterPeerID)
+
+== Адаптация при снижении нагрузки ==
+loop Каждые 30 секунд
+    ACM -> LM: GetCurrentLoad()
+    LM -> ACM: LoadMetrics(load=0.25)
+    
+    alt Load < LowThreshold (0.3)
+        ACM -> ACM: AdaptToLowLoad()
+        ACM -> ACM: DecreaseHighWater(3000 -> 2000)
+        ACM -> ACM: DecreaseLowWater(1200 -> 1000)
+        ACM -> ACM: IncreaseGracePeriod(15s -> 45s)
+        ACM -> Network: ApplyNewLimits()
+        ACM -> Metrics: RecordAdaptationEvent("low_load")
+    end
+end
+
+== Отключение соединения ==
+Network -> ACM: Disconnected(peerID)
+ACM -> CT: UntrackConnection(peerID)
+CT -> CT: RemoveConnectionInfo(peerID)
+ACM -> LM: RecordDisconnection()
+LM -> LM: UpdateActiveConnections--
+
+== Экспорт метрик ==
+loop Каждые 15 секунд
+    ACM -> CT: GetConnectionMetrics()
+    CT -> ACM: ConnectionStats(total, cluster, errors)
+    ACM -> LM: GetLoadMetrics()
+    LM -> ACM: LoadStats(load, rps, latency)
+    ACM -> Metrics: ExportMetrics(connectionStats, loadStats)
+end
+
+== Восстановление кластерного соединения ==
+loop Каждые 30 секунд
+    ACM -> Network: CheckClusterConnections()
+    Network -> ACM: ConnectionStatus(clusterPeerID, disconnected)
+    ACM -> Network: Reconnect(clusterPeerID)
+    Network -> ACM: Connected(clusterPeerID)
+    ACM -> Metrics: RecordClusterReconnection(clusterPeerID)
+end
+
+@enduml

@@ -1,0 +1,114 @@
+@startuml Task2-Code-DataFlow
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Task 2: Поток данных и взаимодействие компонентов
+
+participant "Bitswap Client" as Client
+participant "AdaptiveBitswapConfig" as Config
+participant "AdaptiveConnectionManager" as ConnMgr
+participant "PriorityRequestManager" as PriorityMgr
+participant "BatchRequestProcessor" as BatchProc
+participant "LoadMonitor" as Monitor
+participant "Circuit Breaker" as CB
+
+== Инициализация системы ==
+Client -> Config: NewAdaptiveBitswapConfig()
+Config --> Client: config with defaults
+Client -> ConnMgr: NewAdaptiveConnectionManager(config)
+Client -> PriorityMgr: NewPriorityRequestManager(limits)
+Client -> BatchProc: NewBatchRequestProcessor(config)
+Client -> Monitor: NewLoadMonitor(config)
+Monitor -> Monitor: Start() // Начать мониторинг каждые 10с
+
+== Обработка запроса блока ==
+Client -> CB: CheckCircuitState()
+alt Circuit Open
+    CB --> Client: ErrCircuitOpen
+else Circuit Closed/Half-Open
+    Client -> PriorityMgr: EnqueueRequest(requestContext)
+    PriorityMgr -> PriorityMgr: ClassifyRequest(context)
+    note right: Определение приоритета на основе\ndeadline, retry count, session
+    
+    PriorityMgr -> PriorityMgr: AddToPriorityQueue(priority)
+    PriorityMgr -> BatchProc: SubmitRequest(cid, peerID, priority)
+    
+    BatchProc -> BatchProc: AddToBatch(priority, request)
+    alt Batch Full
+        BatchProc -> BatchProc: ProcessBatch(priority)
+    else Batch Timer
+        BatchProc -> BatchProc: SetBatchTimer(10ms)
+    end
+end
+
+== Мониторинг и адаптация ==
+loop Every 10 seconds
+    Monitor -> Monitor: UpdateMetricsAndAdapt()
+    Monitor -> Monitor: CalculateRPS()
+    Monitor -> Monitor: CalculateP95ResponseTime()
+    Monitor -> Config: UpdateMetrics(rps, avgTime, p95, outstanding, connections)
+    
+    Config -> Config: AdaptConfiguration()
+    Config -> Config: CalculateLoadFactor()
+    alt High Load (>0.8)
+        Config -> Config: ScaleUp()
+        note right: Увеличить MaxOutstandingBytesPerPeer,\nWorkerCount, BatchSize
+    else Low Load (<0.3)
+        Config -> Config: ScaleDown()
+        note right: Уменьшить параметры для\nэкономии ресурсов
+    end
+    
+    alt Configuration Changed
+        Config -> ConnMgr: OnConfigurationChange(newConfig)
+        Config -> BatchProc: UpdateConfiguration(newConfig)
+        Config -> PriorityMgr: UpdateConfiguration(newConfig)
+    end
+end
+
+== Обработка батча запросов ==
+BatchProc -> BatchProc: ProcessBatch(priority, workerPool)
+loop For each request in batch
+    BatchProc -> ConnMgr: GetMaxOutstandingBytesForPeer(peerID)
+    ConnMgr -> ConnMgr: CalculatePeerSpecificLimit()
+    note right: Адаптация лимита на основе\nerror rate и response time пира
+    ConnMgr --> BatchProc: adjustedLimit
+    
+    BatchProc -> Monitor: NewRequestTracker()
+    Monitor -> Monitor: RecordRequest()
+    BatchProc -> Client: ProcessBlockRequest(cid, peerID, limit)
+end
+
+== Завершение запроса ==
+Client -> Monitor: RequestTracker.Complete()
+Monitor -> Monitor: RecordResponse(responseTime)
+Monitor -> Monitor: UpdateResponseTimeBuffer()
+
+Client -> ConnMgr: RecordResponse(peerID, bytes, responseTime, success)
+ConnMgr -> ConnMgr: UpdateConnectionInfo(peerID)
+note right: Обновление метрик пира:\nresponse count, average time, error count
+
+Client -> CB: RecordSuccess() / RecordFailure()
+CB -> CB: UpdateCircuitState()
+alt Too Many Failures
+    CB -> CB: OpenCircuit()
+    note right: Открыть circuit на 60с при\nслишком большом количестве ошибок
+end
+
+== Оптимизация соединений ==
+loop Every 60 seconds
+    ConnMgr -> ConnMgr: OptimizeConnections()
+    ConnMgr -> ConnMgr: DetectStaleConnections()
+    ConnMgr -> ConnMgr: AnalyzePoorPerformingPeers()
+    note right: Логирование пиров с высоким\nerror rate или response time
+end
+
+== Экспорт метрик ==
+loop Continuous
+    Config -> Monitor: GetCurrentMetrics()
+    ConnMgr -> Monitor: GetConnectionMetrics()
+    PriorityMgr -> Monitor: GetPriorityStats()
+    BatchProc -> Monitor: GetBatchMetrics()
+    CB -> Monitor: GetCircuitBreakerStats()
+    Monitor -> Client: ExportToPrometheus()
+end
+
+@enduml

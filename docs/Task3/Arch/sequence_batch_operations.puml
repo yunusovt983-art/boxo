@@ -1,0 +1,161 @@
+@startuml Task3_Batch_Sequence
+title Task 3.2: Последовательность батчевых операций I/O
+
+actor Client as C
+participant "BatchIOManager" as BIM
+participant "OperationQueue" as OQ
+participant "PutWorker" as PW
+participant "BatchProcessor" as BP
+participant "TransactionManager" as TM
+participant "Blockstore" as BS
+participant "StatsCollector" as SC
+
+== Батчевая операция Put ==
+
+C -> BIM: BatchPut(ctx, blocks[1000])
+activate BIM
+
+BIM -> BIM: splitIntoBatches(blocks, maxBatchSize=100)
+note right: Разбиение на батчи по 100 блоков
+
+loop for each batch
+    BIM -> OQ: enqueue(BatchOperation{Put, batch})
+    activate OQ
+    OQ --> BIM: queued
+    deactivate OQ
+end
+
+BIM -> BIM: waitForCompletion()
+
+== Асинхронная обработка Worker'ом ==
+
+OQ -> PW: dequeue BatchOperation
+activate PW
+
+PW -> PW: collectPendingOps(timeout=100ms)
+note right: Группировка операций по таймауту
+
+PW -> BP: processBatch(operations)
+activate BP
+
+BP -> TM: beginTransaction()
+activate TM
+
+loop for each block in batch
+    TM -> BS: Put(ctx, block)
+    activate BS
+    BS --> TM: success
+    deactivate BS
+end
+
+TM -> TM: commitTransaction()
+TM --> BP: transaction committed
+deactivate TM
+
+BP -> SC: updateStats(batchSize, latency, success=true)
+activate SC
+SC -> SC: increment successful batches
+SC -> SC: update average latency
+SC --> BP: stats updated
+deactivate SC
+
+BP --> PW: batch processed
+deactivate BP
+
+PW -> BIM: notifyCompletion(results)
+PW --> OQ: ready for next batch
+deactivate PW
+
+BIM --> C: BatchPut completed
+deactivate BIM
+
+== Обработка ошибок с Retry ==
+
+C -> BIM: BatchPut(ctx, blocks)
+activate BIM
+
+BIM -> OQ: enqueue(BatchOperation)
+activate OQ
+OQ -> PW: dequeue
+deactivate OQ
+
+activate PW
+PW -> BP: processBatch(operations)
+activate BP
+
+BP -> TM: beginTransaction()
+activate TM
+
+TM -> BS: Put(ctx, block)
+activate BS
+BS --> TM: error: disk full
+deactivate BS
+
+TM -> TM: rollbackTransaction()
+TM --> BP: transaction failed
+deactivate TM
+
+BP -> BP: retry attempt 1/3
+BP -> TM: beginTransaction()
+activate TM
+
+TM -> BS: Put(ctx, block)
+activate BS
+BS --> TM: success
+deactivate BS
+
+TM -> TM: commitTransaction()
+TM --> BP: transaction committed
+deactivate TM
+
+BP -> SC: updateStats(batchSize, latency, success=true, retries=1)
+activate SC
+SC -> SC: increment retry count
+SC --> BP: stats updated
+deactivate SC
+
+BP --> PW: batch processed with retry
+deactivate BP
+PW --> BIM: completion with retry info
+deactivate PW
+
+BIM --> C: BatchPut completed (1 retry)
+deactivate BIM
+
+== Конкурентная обработка множественных батчей ==
+
+par Worker 1
+    OQ -> PW: dequeue batch1
+    activate PW
+    PW -> BP: processBatch(batch1)
+    activate BP
+    BP -> BS: execute batch1
+    BP --> PW: completed
+    deactivate BP
+    deactivate PW
+else Worker 2
+    OQ -> PW: dequeue batch2
+    activate PW
+    PW -> BP: processBatch(batch2)
+    activate BP
+    BP -> BS: execute batch2
+    BP --> PW: completed
+    deactivate BP
+    deactivate PW
+else Worker 3
+    OQ -> PW: dequeue batch3
+    activate PW
+    PW -> BP: processBatch(batch3)
+    activate BP
+    BP -> BS: execute batch3
+    BP --> PW: completed
+    deactivate BP
+    deactivate PW
+end
+
+note over PW, BP
+Параллельная обработка батчей
+увеличивает пропускную способность
+end note
+
+@enduml

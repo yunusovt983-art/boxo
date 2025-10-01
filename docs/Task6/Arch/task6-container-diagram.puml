@@ -1,0 +1,50 @@
+@startuml Task6-Container-Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Task 6 - Resource Management and Fault Tolerance - Container Diagram
+
+Person(admin, "System Administrator")
+Person(developer, "Developer")
+
+System_Boundary(task6, "Task 6 - Resource Management System") {
+    Container(resource_monitor, "Resource Monitor", "Go Module", "Monitors CPU, memory, disk usage with predictive analysis")
+    Container(graceful_degradation, "Graceful Degradation Manager", "Go Module", "Manages service quality reduction during overload")
+    Container(auto_scaler, "Auto Scaler", "Go Module", "Dynamically scales components based on load")
+    Container(scalable_components, "Scalable Components", "Go Module", "Worker pools, connection pools, batch processors")
+    Container(monitoring_api, "Monitoring API", "Go Interface", "Unified interface for all monitoring operations")
+}
+
+System_Boundary(boxo_core, "Boxo Core Systems") {
+    Container(bitswap, "Bitswap", "Go Module", "Block exchange protocol")
+    Container(blockstore, "Blockstore", "Go Module", "Block storage interface")
+    Container(network, "Network Layer", "Go Module", "P2P networking")
+}
+
+ContainerDb(metrics_store, "Metrics Store", "In-Memory", "Historical performance data")
+ContainerDb(config_store, "Configuration Store", "File/Memory", "Thresholds, rules, and settings")
+
+System_Ext(prometheus, "Prometheus")
+System_Ext(external_alerts, "External Alert Systems")
+
+Rel(admin, monitoring_api, "Configures via API")
+Rel(developer, monitoring_api, "Integrates monitoring")
+
+Rel(resource_monitor, metrics_store, "Stores/retrieves metrics")
+Rel(resource_monitor, config_store, "Reads thresholds")
+Rel(resource_monitor, graceful_degradation, "Triggers degradation")
+Rel(resource_monitor, auto_scaler, "Provides metrics")
+
+Rel(graceful_degradation, scalable_components, "Applies degradation actions")
+Rel(graceful_degradation, config_store, "Reads degradation rules")
+
+Rel(auto_scaler, scalable_components, "Scales components")
+Rel(auto_scaler, config_store, "Reads scaling rules")
+
+Rel(scalable_components, bitswap, "Scales bitswap workers")
+Rel(scalable_components, blockstore, "Manages block processing")
+Rel(scalable_components, network, "Scales network connections")
+
+Rel(monitoring_api, prometheus, "Exports metrics")
+Rel(monitoring_api, external_alerts, "Sends notifications")
+
+@enduml

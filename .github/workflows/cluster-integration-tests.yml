@@ -1,0 +1,437 @@
+name: Cluster Integration Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'bitswap/**'
+      - 'monitoring/**'
+      - 'blockstore/**'
+      - '.github/workflows/cluster-integration-tests.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'bitswap/**'
+      - 'monitoring/**'
+      - 'blockstore/**'
+      - '.github/workflows/cluster-integration-tests.yml'
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of tests to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - basic
+        - performance
+        - fault-tolerance
+      node_count:
+        description: 'Number of nodes in test cluster'
+        required: false
+        default: '5'
+        type: string
+      test_duration:
+        description: 'Test duration in seconds'
+        required: false
+        default: '30'
+        type: string
+
+env:
+  GO_VERSION: '1.21'
+  CLUSTER_TEST_TIMEOUT: '300s'
+  CLUSTER_TEST_PARALLEL: '4'
+
+jobs:
+  # Basic cluster interaction tests
+  basic-cluster-tests:
+    name: Basic Cluster Tests
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'basic' || github.event.inputs.test_type == '' }}
+    timeout-minutes: 15
+    
+    strategy:
+      matrix:
+        node_count: [3, 5, 7]
+        go_version: ['1.20', '1.21']
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ matrix.go_version }}
+        
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ matrix.go_version }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-${{ matrix.go_version }}-
+          
+    - name: Install dependencies
+      run: go mod download
+      
+    - name: Run basic cluster interaction tests
+      env:
+        CLUSTER_NODE_COUNT: ${{ matrix.node_count }}
+        CLUSTER_TEST_TYPE: basic
+      run: |
+        go test -v -timeout=${{ env.CLUSTER_TEST_TIMEOUT }} \
+          -run="TestClusterNodeInteraction" \
+          ./bitswap/... \
+          -args -node-count=${{ matrix.node_count }}
+          
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: basic-cluster-test-results-${{ matrix.node_count }}-nodes-go${{ matrix.go_version }}
+        path: |
+          test-results/
+          coverage.out
+        retention-days: 7
+
+  # Performance and load tests
+  performance-cluster-tests:
+    name: Performance Cluster Tests
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'performance' || github.event.inputs.test_type == '' }}
+    timeout-minutes: 45
+    
+    strategy:
+      matrix:
+        test_scenario:
+          - name: "small-cluster"
+            node_count: 3
+            concurrent_requests: 50
+            test_duration: "30s"
+          - name: "medium-cluster"
+            node_count: 5
+            concurrent_requests: 100
+            test_duration: "60s"
+          - name: "large-cluster"
+            node_count: 8
+            concurrent_requests: 200
+            test_duration: "90s"
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-${{ env.GO_VERSION }}-
+          
+    - name: Install dependencies
+      run: go mod download
+      
+    - name: Configure system for performance tests
+      run: |
+        # Increase file descriptor limits
+        echo "* soft nofile 65536" | sudo tee -a /etc/security/limits.conf
+        echo "* hard nofile 65536" | sudo tee -a /etc/security/limits.conf
+        ulimit -n 65536
+        
+        # Configure network settings
+        echo 'net.core.somaxconn = 65536' | sudo tee -a /etc/sysctl.conf
+        echo 'net.ipv4.tcp_max_syn_backlog = 65536' | sudo tee -a /etc/sysctl.conf
+        sudo sysctl -p
+        
+    - name: Run performance tests
+      env:
+        CLUSTER_NODE_COUNT: ${{ matrix.test_scenario.node_count }}
+        CLUSTER_CONCURRENT_REQUESTS: ${{ matrix.test_scenario.concurrent_requests }}
+        CLUSTER_TEST_DURATION: ${{ matrix.test_scenario.test_duration }}
+        GOMAXPROCS: ${{ env.CLUSTER_TEST_PARALLEL }}
+      run: |
+        go test -v -timeout=600s \
+          -run="TestClusterPerformanceUnderLoad|TestClusterMetricsAndAlerts" \
+          ./bitswap/... \
+          -args \
+          -node-count=${{ matrix.test_scenario.node_count }} \
+          -concurrent-requests=${{ matrix.test_scenario.concurrent_requests }} \
+          -test-duration=${{ matrix.test_scenario.test_duration }}
+          
+    - name: Run benchmark tests
+      env:
+        CLUSTER_NODE_COUNT: ${{ matrix.test_scenario.node_count }}
+      run: |
+        go test -v -bench=BenchmarkCluster -benchmem -benchtime=30s \
+          ./bitswap/... \
+          -args -node-count=${{ matrix.test_scenario.node_count }} \
+          > benchmark-results-${{ matrix.test_scenario.name }}.txt
+          
+    - name: Upload performance results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-test-results-${{ matrix.test_scenario.name }}
+        path: |
+          benchmark-results-*.txt
+          test-results/
+          coverage.out
+        retention-days: 14
+
+  # Fault tolerance and resilience tests
+  fault-tolerance-tests:
+    name: Fault Tolerance Tests
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'fault-tolerance' || github.event.inputs.test_type == '' }}
+    timeout-minutes: 30
+    
+    strategy:
+      matrix:
+        failure_scenario:
+          - name: "node-failures"
+            test_pattern: "TestClusterFaultTolerance"
+            node_count: 5
+            failure_rate: 0.2
+          - name: "network-partitions"
+            test_pattern: "TestClusterFaultTolerance"
+            node_count: 6
+            failure_rate: 0.3
+          - name: "circuit-breaker"
+            test_pattern: "TestClusterFaultTolerance"
+            node_count: 4
+            failure_rate: 0.4
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-${{ env.GO_VERSION }}-
+          
+    - name: Install dependencies
+      run: go mod download
+      
+    - name: Run fault tolerance tests
+      env:
+        CLUSTER_NODE_COUNT: ${{ matrix.failure_scenario.node_count }}
+        CLUSTER_FAILURE_RATE: ${{ matrix.failure_scenario.failure_rate }}
+        CLUSTER_TEST_TYPE: fault-tolerance
+      run: |
+        go test -v -timeout=${{ env.CLUSTER_TEST_TIMEOUT }} \
+          -run="${{ matrix.failure_scenario.test_pattern }}" \
+          ./bitswap/... \
+          -args \
+          -node-count=${{ matrix.failure_scenario.node_count }} \
+          -failure-rate=${{ matrix.failure_scenario.failure_rate }}
+          
+    - name: Upload fault tolerance results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: fault-tolerance-results-${{ matrix.failure_scenario.name }}
+        path: |
+          test-results/
+          coverage.out
+        retention-days: 7
+
+  # Metrics and monitoring validation
+  metrics-validation-tests:
+    name: Metrics Validation Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-${{ env.GO_VERSION }}-
+          
+    - name: Install dependencies
+      run: go mod download
+      
+    - name: Run metrics validation tests
+      run: |
+        go test -v -timeout=300s \
+          -run="TestClusterMetricsAndAlerts" \
+          ./bitswap/... ./monitoring/...
+          
+    - name: Validate Prometheus metrics format
+      run: |
+        # Test that metrics can be exported in Prometheus format
+        go test -v -run="TestPrometheusMetricsExport" ./monitoring/...
+        
+    - name: Upload metrics validation results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: metrics-validation-results
+        path: |
+          test-results/
+          metrics-output/
+        retention-days: 7
+
+  # Integration test summary
+  integration-test-summary:
+    name: Integration Test Summary
+    runs-on: ubuntu-latest
+    needs: [basic-cluster-tests, performance-cluster-tests, fault-tolerance-tests, metrics-validation-tests]
+    if: always()
+    
+    steps:
+    - name: Download all test artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: test-artifacts/
+        
+    - name: Generate test summary
+      run: |
+        echo "# Cluster Integration Test Summary" > test-summary.md
+        echo "" >> test-summary.md
+        echo "## Test Results Overview" >> test-summary.md
+        echo "" >> test-summary.md
+        
+        # Count successful and failed jobs
+        BASIC_SUCCESS="${{ needs.basic-cluster-tests.result == 'success' }}"
+        PERFORMANCE_SUCCESS="${{ needs.performance-cluster-tests.result == 'success' }}"
+        FAULT_TOLERANCE_SUCCESS="${{ needs.fault-tolerance-tests.result == 'success' }}"
+        METRICS_SUCCESS="${{ needs.metrics-validation-tests.result == 'success' }}"
+        
+        echo "- Basic Cluster Tests: ${{ needs.basic-cluster-tests.result }}" >> test-summary.md
+        echo "- Performance Tests: ${{ needs.performance-cluster-tests.result }}" >> test-summary.md
+        echo "- Fault Tolerance Tests: ${{ needs.fault-tolerance-tests.result }}" >> test-summary.md
+        echo "- Metrics Validation: ${{ needs.metrics-validation-tests.result }}" >> test-summary.md
+        echo "" >> test-summary.md
+        
+        # Add timestamp and commit info
+        echo "## Test Execution Details" >> test-summary.md
+        echo "- **Timestamp:** $(date -u)" >> test-summary.md
+        echo "- **Commit:** ${{ github.sha }}" >> test-summary.md
+        echo "- **Branch:** ${{ github.ref_name }}" >> test-summary.md
+        echo "- **Trigger:** ${{ github.event_name }}" >> test-summary.md
+        
+        if [ "${{ github.event.inputs.test_type }}" != "" ]; then
+          echo "- **Test Type:** ${{ github.event.inputs.test_type }}" >> test-summary.md
+        fi
+        
+        cat test-summary.md
+        
+    - name: Upload test summary
+      uses: actions/upload-artifact@v3
+      with:
+        name: integration-test-summary
+        path: test-summary.md
+        retention-days: 30
+        
+    - name: Comment on PR (if applicable)
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const summary = fs.readFileSync('test-summary.md', 'utf8');
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: summary
+          });
+
+  # Cleanup and notification
+  cleanup:
+    name: Cleanup and Notification
+    runs-on: ubuntu-latest
+    needs: [integration-test-summary]
+    if: always()
+    
+    steps:
+    - name: Cleanup old artifacts
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: context.runId,
+          });
+          
+          // Keep only the most recent 10 artifacts per workflow
+          const oldArtifacts = artifacts.data.artifacts
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+            .slice(10);
+            
+          for (const artifact of oldArtifacts) {
+            await github.rest.actions.deleteArtifact({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              artifact_id: artifact.id,
+            });
+          }
+          
+    - name: Notify on failure
+      if: failure()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const title = 'Cluster Integration Tests Failed';
+          const body = `
+          The cluster integration tests have failed for commit ${{ github.sha }}.
+          
+          **Details:**
+          - Branch: ${{ github.ref_name }}
+          - Workflow: ${{ github.workflow }}
+          - Run ID: ${{ github.run_id }}
+          
+          Please check the workflow logs for more details.
+          `;
+          
+          // Create an issue if tests fail on main branch
+          if (context.ref === 'refs/heads/main') {
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['bug', 'ci-failure', 'cluster-tests']
+            });
+          }

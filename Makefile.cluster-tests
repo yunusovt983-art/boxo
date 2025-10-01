@@ -1,0 +1,306 @@
+# Makefile for Cluster Integration Tests
+# This file provides convenient targets for running cluster integration tests
+
+.PHONY: help cluster-test-all cluster-test-basic cluster-test-performance cluster-test-fault-tolerance cluster-test-metrics cluster-test-clean cluster-test-setup
+
+# Default target
+help:
+	@echo "Cluster Integration Test Targets:"
+	@echo "  cluster-test-all           - Run all cluster integration tests"
+	@echo "  cluster-test-basic         - Run basic cluster interaction tests"
+	@echo "  cluster-test-performance   - Run performance and load tests"
+	@echo "  cluster-test-fault-tolerance - Run fault tolerance tests"
+	@echo "  cluster-test-metrics       - Run metrics validation tests"
+	@echo "  cluster-test-setup         - Setup test environment"
+	@echo "  cluster-test-clean         - Clean test artifacts"
+	@echo "  cluster-test-benchmark     - Run benchmark tests"
+	@echo "  cluster-test-ci            - Run tests in CI mode"
+	@echo ""
+	@echo "Environment Variables:"
+	@echo "  CLUSTER_NODE_COUNT         - Number of nodes (default: 5)"
+	@echo "  CLUSTER_TEST_DURATION      - Test duration (default: 30s)"
+	@echo "  CLUSTER_CONCURRENT_REQUESTS - Concurrent requests (default: 100)"
+	@echo "  CLUSTER_FAILURE_RATE       - Failure rate (default: 0.05)"
+	@echo "  CLUSTER_TEST_TIMEOUT       - Test timeout (default: 300s)"
+	@echo "  CLUSTER_TEST_VERBOSE       - Verbose output (default: false)"
+
+# Configuration
+CLUSTER_NODE_COUNT ?= 5
+CLUSTER_TEST_DURATION ?= 30s
+CLUSTER_CONCURRENT_REQUESTS ?= 100
+CLUSTER_FAILURE_RATE ?= 0.05
+CLUSTER_TEST_TIMEOUT ?= 300s
+CLUSTER_TEST_VERBOSE ?= false
+CLUSTER_TEST_PARALLEL ?= 4
+
+# Test directories
+TEST_RESULTS_DIR := test-results
+COVERAGE_DIR := coverage
+BENCHMARK_DIR := benchmarks
+
+# Go test flags
+GO_TEST_FLAGS := -timeout=$(CLUSTER_TEST_TIMEOUT)
+ifeq ($(CLUSTER_TEST_VERBOSE),true)
+	GO_TEST_FLAGS += -v
+endif
+
+# Test environment setup
+cluster-test-setup:
+	@echo "Setting up cluster test environment..."
+	@mkdir -p $(TEST_RESULTS_DIR)
+	@mkdir -p $(COVERAGE_DIR)
+	@mkdir -p $(BENCHMARK_DIR)
+	@echo "Checking Go modules..."
+	@go mod download
+	@echo "Verifying test dependencies..."
+	@go list -m all | grep -E "(testify|prometheus)" || echo "Warning: Some test dependencies may be missing"
+	@echo "Setup complete."
+
+# Clean test artifacts
+cluster-test-clean:
+	@echo "Cleaning test artifacts..."
+	@rm -rf $(TEST_RESULTS_DIR)
+	@rm -rf $(COVERAGE_DIR)
+	@rm -rf $(BENCHMARK_DIR)
+	@rm -f *.log
+	@rm -f *.prof
+	@echo "Cleanup complete."
+
+# Run all cluster integration tests
+cluster-test-all: cluster-test-setup
+	@echo "Running all cluster integration tests..."
+	@echo "Configuration:"
+	@echo "  Node Count: $(CLUSTER_NODE_COUNT)"
+	@echo "  Test Duration: $(CLUSTER_TEST_DURATION)"
+	@echo "  Concurrent Requests: $(CLUSTER_CONCURRENT_REQUESTS)"
+	@echo "  Failure Rate: $(CLUSTER_FAILURE_RATE)"
+	@echo "  Timeout: $(CLUSTER_TEST_TIMEOUT)"
+	@echo ""
+	
+	@CLUSTER_NODE_COUNT=$(CLUSTER_NODE_COUNT) \
+	 CLUSTER_TEST_DURATION=$(CLUSTER_TEST_DURATION) \
+	 CLUSTER_CONCURRENT_REQUESTS=$(CLUSTER_CONCURRENT_REQUESTS) \
+	 CLUSTER_FAILURE_RATE=$(CLUSTER_FAILURE_RATE) \
+	 go test $(GO_TEST_FLAGS) \
+	 -coverprofile=$(COVERAGE_DIR)/cluster-all.out \
+	 -run="TestCluster" \
+	 ./bitswap/... ./monitoring/... \
+	 -args \
+	 -node-count=$(CLUSTER_NODE_COUNT) \
+	 -test-duration=$(CLUSTER_TEST_DURATION) \
+	 -concurrent-requests=$(CLUSTER_CONCURRENT_REQUESTS) \
+	 -failure-rate=$(CLUSTER_FAILURE_RATE) \
+	 | tee $(TEST_RESULTS_DIR)/cluster-all.log
+
+# Run basic cluster interaction tests
+cluster-test-basic: cluster-test-setup
+	@echo "Running basic cluster interaction tests..."
+	@CLUSTER_NODE_COUNT=$(CLUSTER_NODE_COUNT) \
+	 go test $(GO_TEST_FLAGS) \
+	 -coverprofile=$(COVERAGE_DIR)/cluster-basic.out \
+	 -run="TestClusterNodeInteraction" \
+	 ./bitswap/... \
+	 -args -node-count=$(CLUSTER_NODE_COUNT) \
+	 | tee $(TEST_RESULTS_DIR)/cluster-basic.log
+
+# Run performance and load tests
+cluster-test-performance: cluster-test-setup
+	@echo "Running cluster performance tests..."
+	@CLUSTER_NODE_COUNT=$(CLUSTER_NODE_COUNT) \
+	 CLUSTER_TEST_DURATION=$(CLUSTER_TEST_DURATION) \
+	 CLUSTER_CONCURRENT_REQUESTS=$(CLUSTER_CONCURRENT_REQUESTS) \
+	 go test $(GO_TEST_FLAGS) \
+	 -coverprofile=$(COVERAGE_DIR)/cluster-performance.out \
+	 -run="TestClusterPerformanceUnderLoad|TestClusterMetricsAndAlerts" \
+	 ./bitswap/... \
+	 -args \
+	 -node-count=$(CLUSTER_NODE_COUNT) \
+	 -test-duration=$(CLUSTER_TEST_DURATION) \
+	 -concurrent-requests=$(CLUSTER_CONCURRENT_REQUESTS) \
+	 | tee $(TEST_RESULTS_DIR)/cluster-performance.log
+
+# Run fault tolerance tests
+cluster-test-fault-tolerance: cluster-test-setup
+	@echo "Running cluster fault tolerance tests..."
+	@CLUSTER_NODE_COUNT=$(CLUSTER_NODE_COUNT) \
+	 CLUSTER_FAILURE_RATE=$(CLUSTER_FAILURE_RATE) \
+	 go test $(GO_TEST_FLAGS) \
+	 -coverprofile=$(COVERAGE_DIR)/cluster-fault-tolerance.out \
+	 -run="TestClusterFaultTolerance" \
+	 ./bitswap/... \
+	 -args \
+	 -node-count=$(CLUSTER_NODE_COUNT) \
+	 -failure-rate=$(CLUSTER_FAILURE_RATE) \
+	 | tee $(TEST_RESULTS_DIR)/cluster-fault-tolerance.log
+
+# Run metrics validation tests
+cluster-test-metrics: cluster-test-setup
+	@echo "Running cluster metrics validation tests..."
+	@go test $(GO_TEST_FLAGS) \
+	 -coverprofile=$(COVERAGE_DIR)/cluster-metrics.out \
+	 -run="TestClusterMetrics|TestPrometheusMetricsExport" \
+	 ./bitswap/... ./monitoring/... \
+	 | tee $(TEST_RESULTS_DIR)/cluster-metrics.log
+
+# Run benchmark tests
+cluster-test-benchmark: cluster-test-setup
+	@echo "Running cluster benchmark tests..."
+	@CLUSTER_NODE_COUNT=$(CLUSTER_NODE_COUNT) \
+	 go test $(GO_TEST_FLAGS) \
+	 -bench=BenchmarkCluster \
+	 -benchmem \
+	 -benchtime=30s \
+	 -cpuprofile=$(BENCHMARK_DIR)/cpu.prof \
+	 -memprofile=$(BENCHMARK_DIR)/mem.prof \
+	 ./bitswap/... \
+	 -args -node-count=$(CLUSTER_NODE_COUNT) \
+	 | tee $(BENCHMARK_DIR)/benchmark-results.txt
+
+# Run tests in CI mode (optimized for CI/CD)
+cluster-test-ci: cluster-test-setup
+	@echo "Running cluster tests in CI mode..."
+	@CLUSTER_NODE_COUNT=3 \
+	 CLUSTER_TEST_DURATION=15s \
+	 CLUSTER_CONCURRENT_REQUESTS=50 \
+	 go test $(GO_TEST_FLAGS) \
+	 -short \
+	 -parallel=$(CLUSTER_TEST_PARALLEL) \
+	 -coverprofile=$(COVERAGE_DIR)/cluster-ci.out \
+	 -json \
+	 -run="TestCluster" \
+	 ./bitswap/... ./monitoring/... \
+	 -args \
+	 -node-count=3 \
+	 -test-duration=15s \
+	 -concurrent-requests=50 \
+	 > $(TEST_RESULTS_DIR)/cluster-ci.json
+
+# Generate coverage report
+cluster-test-coverage: cluster-test-all
+	@echo "Generating coverage report..."
+	@go tool cover -html=$(COVERAGE_DIR)/cluster-all.out -o $(COVERAGE_DIR)/cluster-coverage.html
+	@go tool cover -func=$(COVERAGE_DIR)/cluster-all.out | tee $(COVERAGE_DIR)/cluster-coverage.txt
+	@echo "Coverage report generated: $(COVERAGE_DIR)/cluster-coverage.html"
+
+# Analyze benchmark results
+cluster-test-analyze-benchmarks: cluster-test-benchmark
+	@echo "Analyzing benchmark results..."
+	@if [ -f $(BENCHMARK_DIR)/cpu.prof ]; then \
+		echo "CPU Profile Analysis:"; \
+		go tool pprof -top -cum $(BENCHMARK_DIR)/cpu.prof | head -20; \
+	fi
+	@if [ -f $(BENCHMARK_DIR)/mem.prof ]; then \
+		echo "Memory Profile Analysis:"; \
+		go tool pprof -top -cum $(BENCHMARK_DIR)/mem.prof | head -20; \
+	fi
+	@echo "Full benchmark results in: $(BENCHMARK_DIR)/benchmark-results.txt"
+
+# Run stress tests (long-running, high load)
+cluster-test-stress: cluster-test-setup
+	@echo "Running cluster stress tests..."
+	@echo "WARNING: This test runs for an extended period with high resource usage"
+	@CLUSTER_NODE_COUNT=8 \
+	 CLUSTER_TEST_DURATION=300s \
+	 CLUSTER_CONCURRENT_REQUESTS=500 \
+	 go test $(GO_TEST_FLAGS) \
+	 -timeout=600s \
+	 -coverprofile=$(COVERAGE_DIR)/cluster-stress.out \
+	 -run="TestClusterPerformanceUnderLoad" \
+	 ./bitswap/... \
+	 -args \
+	 -node-count=8 \
+	 -test-duration=300s \
+	 -concurrent-requests=500 \
+	 | tee $(TEST_RESULTS_DIR)/cluster-stress.log
+
+# Validate test environment
+cluster-test-validate-env:
+	@echo "Validating test environment..."
+	@echo "Go version: $$(go version)"
+	@echo "Available memory: $$(free -h 2>/dev/null || echo 'N/A (not Linux)')"
+	@echo "Available disk space: $$(df -h . | tail -1)"
+	@echo "CPU cores: $$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 'N/A')"
+	@echo "Open file limit: $$(ulimit -n)"
+	@echo "Max processes: $$(ulimit -u)"
+	@echo ""
+	@echo "Recommended minimums for cluster tests:"
+	@echo "  Memory: 4GB"
+	@echo "  Disk: 2GB free"
+	@echo "  CPU: 4 cores"
+	@echo "  File descriptors: 8192"
+
+# Generate test report
+cluster-test-report:
+	@echo "Generating cluster test report..."
+	@echo "# Cluster Integration Test Report" > $(TEST_RESULTS_DIR)/report.md
+	@echo "" >> $(TEST_RESULTS_DIR)/report.md
+	@echo "Generated on: $$(date)" >> $(TEST_RESULTS_DIR)/report.md
+	@echo "" >> $(TEST_RESULTS_DIR)/report.md
+	@echo "## Test Configuration" >> $(TEST_RESULTS_DIR)/report.md
+	@echo "- Node Count: $(CLUSTER_NODE_COUNT)" >> $(TEST_RESULTS_DIR)/report.md
+	@echo "- Test Duration: $(CLUSTER_TEST_DURATION)" >> $(TEST_RESULTS_DIR)/report.md
+	@echo "- Concurrent Requests: $(CLUSTER_CONCURRENT_REQUESTS)" >> $(TEST_RESULTS_DIR)/report.md
+	@echo "- Failure Rate: $(CLUSTER_FAILURE_RATE)" >> $(TEST_RESULTS_DIR)/report.md
+	@echo "" >> $(TEST_RESULTS_DIR)/report.md
+	@echo "## Test Results" >> $(TEST_RESULTS_DIR)/report.md
+	@if [ -f $(TEST_RESULTS_DIR)/cluster-all.log ]; then \
+		echo "### All Tests" >> $(TEST_RESULTS_DIR)/report.md; \
+		grep -E "(PASS|FAIL|ok|FAIL)" $(TEST_RESULTS_DIR)/cluster-all.log | tail -10 >> $(TEST_RESULTS_DIR)/report.md; \
+		echo "" >> $(TEST_RESULTS_DIR)/report.md; \
+	fi
+	@if [ -f $(COVERAGE_DIR)/cluster-coverage.txt ]; then \
+		echo "### Coverage Summary" >> $(TEST_RESULTS_DIR)/report.md; \
+		tail -1 $(COVERAGE_DIR)/cluster-coverage.txt >> $(TEST_RESULTS_DIR)/report.md; \
+		echo "" >> $(TEST_RESULTS_DIR)/report.md; \
+	fi
+	@echo "Report generated: $(TEST_RESULTS_DIR)/report.md"
+
+# Watch tests (for development)
+cluster-test-watch:
+	@echo "Watching for changes and running basic tests..."
+	@while true; do \
+		inotifywait -r -e modify,create,delete --include='\.go$$' ./bitswap ./monitoring 2>/dev/null || sleep 2; \
+		echo "Changes detected, running basic tests..."; \
+		make cluster-test-basic CLUSTER_TEST_VERBOSE=true || true; \
+		echo "Waiting for changes..."; \
+	done
+
+# Docker-based testing (if Docker is available)
+cluster-test-docker:
+	@echo "Running cluster tests in Docker..."
+	@if command -v docker >/dev/null 2>&1; then \
+		docker run --rm -v $$(pwd):/workspace -w /workspace golang:1.21 \
+		make cluster-test-ci; \
+	else \
+		echo "Docker not available, falling back to local testing"; \
+		make cluster-test-ci; \
+	fi
+
+# Help for specific test types
+cluster-test-help-basic:
+	@echo "Basic Cluster Tests:"
+	@echo "  Tests fundamental node-to-node communication"
+	@echo "  Verifies block exchange between cluster nodes"
+	@echo "  Checks connection management"
+	@echo "  Usage: make cluster-test-basic CLUSTER_NODE_COUNT=3"
+
+cluster-test-help-performance:
+	@echo "Performance Tests:"
+	@echo "  Tests system behavior under high load"
+	@echo "  Measures throughput and latency"
+	@echo "  Validates adaptive scaling"
+	@echo "  Usage: make cluster-test-performance CLUSTER_CONCURRENT_REQUESTS=200"
+
+cluster-test-help-fault-tolerance:
+	@echo "Fault Tolerance Tests:"
+	@echo "  Simulates node failures and network partitions"
+	@echo "  Tests circuit breaker functionality"
+	@echo "  Validates recovery mechanisms"
+	@echo "  Usage: make cluster-test-fault-tolerance CLUSTER_FAILURE_RATE=0.1"
+
+cluster-test-help-metrics:
+	@echo "Metrics Tests:"
+	@echo "  Validates metrics collection and export"
+	@echo "  Tests alert generation and propagation"
+	@echo "  Verifies Prometheus integration"
+	@echo "  Usage: make cluster-test-metrics"

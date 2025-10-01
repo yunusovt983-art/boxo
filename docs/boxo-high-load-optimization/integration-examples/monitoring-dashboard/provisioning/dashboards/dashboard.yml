@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: 'boxo-dashboards'
+    orgId: 1
+    folder: 'Boxo High-Load'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards

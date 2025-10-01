@@ -1,0 +1,124 @@
+@startuml Task5-State-Diagram
+!theme plain
+
+title Auto Tuner - Диаграмма состояний
+
+[*] --> Idle : Запуск системы
+
+state Idle {
+    Idle : Ожидание сигналов для оптимизации
+    Idle : Периодический сбор метрик
+}
+
+state Analyzing {
+    Analyzing : Анализ текущих метрик
+    Analyzing : Сравнение с историческими данными
+    Analyzing : Выявление паттернов производительности
+}
+
+state Predicting {
+    Predicting : ML предсказание оптимальных параметров
+    Predicting : Расчет потенциального улучшения
+    Predicting : Оценка рисков изменений
+}
+
+state Optimizing {
+    Optimizing : Генерация новой конфигурации
+    Optimizing : Валидация параметров
+    Optimizing : Подготовка к применению
+}
+
+state Applying {
+    Applying : Создание backup текущей конфигурации
+    Applying : Постепенное применение изменений
+    Applying : Мониторинг процесса применения
+}
+
+state Monitoring {
+    Monitoring : Отслеживание метрик после изменений
+    Monitoring : Сравнение с ожидаемыми результатами
+    Monitoring : Обнаружение деградации производительности
+}
+
+state RollingBack {
+    RollingBack : Восстановление предыдущей конфигурации
+    RollingBack : Уведомление о неудачной оптимизации
+    RollingBack : Анализ причин неудачи
+}
+
+state Success {
+    Success : Подтверждение успешной оптимизации
+    Success : Сохранение новой конфигурации как базовой
+    Success : Обновление ML модели
+}
+
+Idle --> Analyzing : Получен сигнал о необходимости оптимизации\n/ Превышены пороги производительности
+Idle --> Analyzing : Периодическая проверка\n/ Таймер (каждые 15 минут)
+
+Analyzing --> Predicting : Обнаружены возможности для оптимизации\n/ Метрики показывают потенциал улучшения
+Analyzing --> Idle : Оптимизация не требуется\n/ Производительность в норме
+
+Predicting --> Optimizing : ML модель предсказала улучшения\n/ Confidence > 80%
+Predicting --> Idle : Предсказания неопределенные\n/ Confidence < 50%
+
+Optimizing --> Applying : Конфигурация готова\n/ Валидация прошла успешно
+Optimizing --> Idle : Ошибка в оптимизации\n/ Невалидные параметры
+
+Applying --> Monitoring : Изменения применены\n/ Конфигурация обновлена
+Applying --> RollingBack : Ошибка применения\n/ Сбой в процессе обновления
+
+Monitoring --> Success : Производительность улучшилась\n/ Метрики превысили ожидания
+Monitoring --> RollingBack : Деградация производительности\n/ Метрики ухудшились
+Monitoring --> Monitoring : Продолжение мониторинга\n/ Результаты неопределенные
+
+RollingBack --> Idle : Откат завершен\n/ Система восстановлена
+Success --> Idle : Оптимизация завершена\n/ Новая конфигурация сохранена
+
+' Внутренние переходы
+Analyzing : entry / Запуск анализа метрик
+Analyzing : do / Сбор и анализ данных
+Analyzing : exit / Подготовка результатов анализа
+
+Predicting : entry / Загрузка ML модели
+Predicting : do / Выполнение предсказаний
+Predicting : exit / Сохранение результатов предсказания
+
+Optimizing : entry / Инициализация оптимизатора
+Optimizing : do / Генерация конфигурации
+Optimizing : exit / Валидация результатов
+
+Applying : entry / Создание backup
+Applying : do / Применение изменений
+Applying : exit / Запуск мониторинга
+
+Monitoring : entry / Начало мониторинга
+Monitoring : do / Сбор метрик производительности
+Monitoring : exit / Анализ результатов
+
+RollingBack : entry / Инициализация отката
+RollingBack : do / Восстановление конфигурации
+RollingBack : exit / Уведомление об откате
+
+Success : entry / Подтверждение успеха
+Success : do / Обновление базовой конфигурации
+Success : exit / Обновление ML модели
+
+note right of Idle
+  Система находится в состоянии ожидания
+  большую часть времени, активируясь
+  только при необходимости оптимизации
+end note
+
+note right of Monitoring
+  Критически важное состояние -
+  здесь определяется успех или
+  неудача оптимизации
+end note
+
+note right of RollingBack
+  Безопасность превыше всего -
+  при любых сомнениях система
+  откатывает изменения
+end note
+
+@enduml

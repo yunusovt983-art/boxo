@@ -1,0 +1,66 @@
+@startuml Task2_Level2_Container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Task 2: Bitswap High-Throughput Optimization - Container Level
+
+Person(user, "IPFS User", "User requesting blocks")
+Person(peer, "IPFS Peer", "Other IPFS nodes")
+
+System_Boundary(bitswap_system, "Enhanced Bitswap System") {
+    Container(client, "Bitswap Client", "Go", "Handles outgoing block requests with adaptive optimization")
+    Container(server, "Bitswap Server", "Go", "Handles incoming block requests and responses")
+    
+    Container_Boundary(adaptive, "Adaptive Optimization Layer") {
+        Container(config, "Adaptive Config", "Go", "Dynamic configuration management with auto-scaling")
+        Container(connection_mgr, "Connection Manager", "Go", "Adaptive peer connection management")
+        Container(load_monitor, "Load Monitor", "Go", "Performance monitoring and metrics collection")
+        Container(batch_processor, "Batch Processor", "Go", "Request batching and parallel processing")
+        Container(worker_pools, "Worker Pools", "Go", "Priority-based parallel task execution")
+    }
+}
+
+ContainerDb(blockstore, "Local Blockstore", "BadgerDB/LevelDB", "Local block storage")
+System_Ext(network, "IPFS Network", "P2P network layer")
+
+' User interactions
+Rel(user, client, "GetBlock/GetBlocks", "HTTPS/API")
+
+' Internal relationships
+Rel(client, config, "Gets adaptive limits", "Function calls")
+Rel(client, connection_mgr, "Manages peer connections", "Function calls")
+Rel(client, batch_processor, "Submits batched requests", "Channels")
+
+Rel(server, config, "Gets adaptive limits", "Function calls")
+Rel(server, connection_mgr, "Tracks peer activity", "Function calls")
+
+Rel(config, load_monitor, "Receives metrics", "Function calls")
+Rel(connection_mgr, load_monitor, "Reports connection metrics", "Function calls")
+Rel(batch_processor, worker_pools, "Distributes tasks", "Channels")
+Rel(batch_processor, config, "Gets batch configuration", "Function calls")
+
+' External interactions
+Rel(client, network, "Sends requests", "BitSwap Protocol")
+Rel(server, network, "Receives requests", "BitSwap Protocol")
+Rel(client, blockstore, "Stores blocks", "Blockstore API")
+Rel(server, blockstore, "Retrieves blocks", "Blockstore API")
+Rel(peer, network, "Block exchange", "BitSwap Protocol")
+
+note right of adaptive
+**Task 2.1:** Adaptive Connection Management
+- Dynamic MaxOutstandingBytesPerPeer (256KB-100MB)
+- Auto-scaling worker pools (128-2048)
+- Load-based adaptation every 30s
+
+**Task 2.2:** Request Prioritization
+- 4 priority levels (Critical/High/Normal/Low)
+- P95 response time monitoring
+- Dynamic resource reallocation
+
+**Task 2.3:** Batch Processing
+- Request grouping by priority
+- Configurable batch sizes (50-1000)
+- Parallel processing with worker pools
+- 471k ops/sec throughput
+end note
+
+@enduml
