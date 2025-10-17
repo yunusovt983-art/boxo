@@ -244,6 +244,55 @@ Rel(rootc, repubc, "Trigger(cid)")
 Rel(repubc, provider, "PubFunc(cid)")
 @enduml
 ```
+<img width="1142" height="1190" alt="C4-Component-MFS" src="https://github.com/user-attachments/assets/cbf3514e-73af-4ff8-9635-28fc2f2590f4" />
+```go
+@startuml C4-Component-MFS
+!include <C4/C4_Component>
+LAYOUT_TOP_DOWN()
+skinparam defaultFontColor #1D2939
+skinparam ArrowColor #667085
+skinparam roundcorner 14
+
+
+AddElementTag("cmp", $bgColor="#EEF4FF", $borderColor="#3B82F6", $fontColor="#0B1B3F")
+AddElementTag("ext", $bgColor="#F2F4F7", $borderColor="#D0D5DD", $fontColor="#101828")
+
+
+Container_Boundary(libmfs, "boxo/mfs (library)") {
+Component(rootCmp, "Root", "cmp", "Создание из узла, републикация, FlushPath")
+Component(dirCmp, "Directory", "cmp", "Кэш дочерних FSNode, Mkdir/PutNode/Mv")
+Component(fileCmp, "File", "cmp", "UnixFS файл, SetMode/SetModTime/Truncate/Flush")
+Component(fdCmp, "FileDescriptor", "cmp", "Состояния FD: Created/Dirty/Flushed/Closed")
+Component(inodeCmp, "inode (base)", "cmp", "name,parent,dag,provider; touchParent()")
+Component(opsCmp, "ops.go", "cmp", "POSIX-подобные операции")
+Component(repubCmp, "Republisher", "cmp", "Short/Long timers, retry PubFunc")
+Component(flagsCmp, "Flags/Options", "cmp", "Read/Write/Sync/…")
+}
+
+Component_Ext(dagSvc, "ipld.DAGService", "ext", "Put/Get nodes")
+Component_Ext(uFS, "unixfs.FSNode", "ext", "Файлы/директории как протоузлы")
+Component_Ext(dmExt, "unixfs.mod.DagModifier", "ext", "RW-операции над содержимым")
+Component_Ext(providerExt, "routing.ContentProviding", "ext", "Announce/Provide CIDs")
+
+Rel(opsCmp, rootCmp, "entrypoint")
+Rel(rootCmp, dirCmp, "Lookup root/paths")
+Rel(dirCmp, fileCmp, "доступ к листьям")
+Rel(fileCmp, fdCmp, "Open() → FD")
+Rel(fdCmp, dmExt, "writes/truncate")
+Rel(fileCmp, uFS, "wrap/pack FSNode")
+Rel(fileCmp, dagSvc, "Flush → Put(node)")
+Rel(dirCmp, dagSvc, "Update dir links → Put(dir)")
+Rel(rootCmp, repubCmp, "Trigger(cid)")
+Rel(repubCmp, providerExt, "PubFunc(cid)")
+
+note right of inodeCmp
+Общая база для File/Directory
+хранит ссылки на parent, dag, provider
+end note
+
+@enduml
+```
+
 
 
 
