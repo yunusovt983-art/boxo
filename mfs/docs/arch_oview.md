@@ -81,4 +81,38 @@ Client -> FD : Close()
 FD -> FD : state=Closed
 @enduml
 ```
+<img width="702" height="606" alt="FD-StateMachine" src="https://github.com/user-attachments/assets/715d57a2-f155-4f77-b996-294f439bd434" />
+
+```go
+@startuml FD-StateMachine
+' State machine for FileDescriptor lifecycle
+skinparam defaultFontColor #1D2939
+skinparam roundcorner 12
+
+
+[*] --> Created
+Created --> Dirty : Write/Truncate
+Dirty --> Dirty : More writes
+Dirty --> Flushed : Flush -> DAG.Put OK
+Flushed --> Dirty : Write/Truncate again
+Created --> Closed : Close (no writes)
+Flushed --> Closed : Close
+Dirty --> Closed : Close (implicit Flush?)
+Closed --> [*]
+
+
+note right of Dirty
+Holds mutex during mutations
+DagModifier accumulates changes
+end note
+
+
+note bottom of Flushed
+Parent notified to update links
+Republisher may be triggered
+end note
+@enduml
+```
+
+
 
