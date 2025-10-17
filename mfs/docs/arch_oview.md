@@ -195,6 +195,55 @@ Rel(rootc, repubc, "Trigger(cid)")
 Rel(repubc, provider, "PubFunc(cid)")
 @enduml
 ```
+<img width="781" height="1437" alt="C4-Container-MFS" src="https://github.com/user-attachments/assets/382c6453-7786-45ab-94b2-df17d97cc679" />
+
+```go
+@startuml C4-Container-MFS
+!include <C4/C4_Container>
+LAYOUT_TOP_DOWN()
+skinparam defaultFontColor #1D2939
+skinparam ArrowColor #667085
+skinparam roundcorner 14
+
+
+AddElementTag("lib", $bgColor="#E6F4EA", $borderColor="#22C55E", $fontColor="#052E16")
+AddElementTag("ext", $bgColor="#F2F4F7", $borderColor="#D0D5DD", $fontColor="#101828")
+
+
+System_Boundary(app, "Application using boxo/mfs") {
+Container(appsvc, "App Service/Daemon", "Go", "Вызывает API mfs (ops.go)")
+}
+
+
+System_Boundary(mfsb, "boxo/mfs") {
+Container(rootc, "Root", "Go", "Инициализация дерева, корневой каталог", $tags="lib")
+Container(dirc, "Directory", "Go", "Кэш узлов, синхронизация вверх", $tags="lib")
+Container(filec, "File", "Go", "UnixFS-файл, Flush/Truncate", $tags="lib")
+Container(fdc, "FileDescriptor", "Go", "Конкурентный доступ через DagModifier", $tags="lib")
+Container(opsc, "ops API", "Go", "Mv/Mkdir/PutNode/Chmod/Touch/FlushPath", $tags="lib")
+Container(repubc, "Republisher", "Go", "Агрегация CID, короткий/длинный таймер", $tags="lib")
+}
+
+
+Container_Ext(dag, "ipld.DAGService", "Go", "Put/Get nodes", $tags="ext")
+Container_Ext(unix, "unixfs", "Go", "FSNode/DagModifier", $tags="ext")
+Container_Ext(provider, "routing.ContentProviding", "Go", "Provide CIDs", $tags="ext")
+Container_Ext(store, "Blockstore/Datastore", "Go", "Persist blocks", $tags="ext")
+
+
+Rel(appsvc, opsc, "Вызовы API")
+Rel(opsc, rootc, "resolve & dispatch")
+Rel(rootc, dirc, "GetDirectory()/Lookup")
+Rel(dirc, filec, "leaf operations")
+Rel(filec, fdc, "Open() → FD")
+Rel(fdc, unix, "DagModifier RW")
+Rel(filec, dag, "Flush → Put(node)")
+Rel(dirc, dag, "Put(dir)")
+Rel(dag, store, "blocks")
+Rel(rootc, repubc, "Trigger(cid)")
+Rel(repubc, provider, "PubFunc(cid)")
+@enduml
+```
 
 
 
