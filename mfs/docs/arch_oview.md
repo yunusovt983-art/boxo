@@ -115,4 +115,86 @@ end note
 ```
 
 
+<img width="1449" height="1504" alt="C4-Context-MFS" src="https://github.com/user-attachments/assets/730fb302-ead6-49ab-a0ca-4cc9a1b5eea8" />
+
+```go
+@startuml C4-Context-MFS
+!include <C4/C4_Context>
+LAYOUT_TOP_DOWN()
+skinparam defaultFontColor #1D2939
+skinparam ArrowColor #667085
+skinparam roundcorner 14
+
+
+AddElementTag("ext", $bgColor="#F2F4F7", $borderColor="#D0D5DD", $fontColor="#101828")
+AddElementTag("core", $bgColor="#E6F4EA", $borderColor="#16A34A", $fontColor="#07270F")
+
+
+Person(user, "Client App / Tooling", "CLI/Daemon/Service использует boxo/mfs")
+System_Boundary(boxo, "boxo (Go libs)") {
+System(mfs, "mfs library", "Mutable File System", $tags="core")
+}
+System_Ext(ipld, "IPLD DAGService", "Чтение/запись узлов", $tags="ext")
+System_Ext(unixfs, "UnixFS", "ФС-представление поверх IPLD", $tags="ext")
+System_Ext(routing, "Libp2p Routing", "ContentProviding / announce CIDs", $tags="ext")
+System_Ext(blockstore, "Blockstore / Datastore", "Хранение блоков", $tags="ext")
+
+
+Rel(user, mfs, "POSIX-подобные операции (Lookup/Mkdir/Put/Flush)")
+Rel(mfs, ipld, "Put/Get nodes")
+Rel(mfs, unixfs, "Инкапсулирует файлы/директории")
+Rel(mfs, routing, "Provide root CID (optional)")
+Rel(ipld, blockstore, "persist blocks")
+@enduml
+
+
+'-----------------------------
+@startuml C4-Container-MFS
+!include <C4/C4_Container>
+LAYOUT_TOP_DOWN()
+skinparam defaultFontColor #1D2939
+skinparam ArrowColor #667085
+skinparam roundcorner 14
+
+
+AddElementTag("lib", $bgColor="#E6F4EA", $borderColor="#22C55E", $fontColor="#052E16")
+AddElementTag("ext", $bgColor="#F2F4F7", $borderColor="#D0D5DD", $fontColor="#101828")
+
+
+System_Boundary(app, "Application using boxo/mfs") {
+Container(appsvc, "App Service/Daemon", "Go", "Вызывает API mfs (ops.go)")
+}
+
+
+System_Boundary(mfsb, "boxo/mfs") {
+Container(rootc, "Root", "Go", "Инициализация дерева, корневой каталог", $tags="lib")
+Container(dirc, "Directory", "Go", "Кэш узлов, синхронизация вверх", $tags="lib")
+Container(filec, "File", "Go", "UnixFS-файл, Flush/Truncate", $tags="lib")
+Container(fdc, "FileDescriptor", "Go", "Конкурентный доступ через DagModifier", $tags="lib")
+Container(opsc, "ops API", "Go", "Mv/Mkdir/PutNode/Chmod/Touch/FlushPath", $tags="lib")
+Container(repubc, "Republisher", "Go", "Агрегация CID, короткий/длинный таймер", $tags="lib")
+}
+
+
+Container_Ext(dag, "ipld.DAGService", "Go", "Put/Get nodes", $tags="ext")
+Container_Ext(unix, "unixfs", "Go", "FSNode/DagModifier", $tags="ext")
+Container_Ext(provider, "routing.ContentProviding", "Go", "Provide CIDs", $tags="ext")
+Container_Ext(store, "Blockstore/Datastore", "Go", "Persist blocks", $tags="ext")
+
+
+Rel(appsvc, opsc, "Вызовы API")
+Rel(opsc, rootc, "resolve & dispatch")
+Rel(rootc, dirc, "GetDirectory()/Lookup")
+Rel(dirc, filec, "leaf operations")
+Rel(filec, fdc, "Open() → FD")
+Rel(fdc, unix, "DagModifier RW")
+Rel(filec, dag, "Flush → Put(node)")
+Rel(dirc, dag, "Put(dir)")
+Rel(dag, store, "blocks")
+Rel(rootc, repubc, "Trigger(cid)")
+Rel(repubc, provider, "PubFunc(cid)")
+@enduml
+```
+
+
 
